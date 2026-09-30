@@ -25,6 +25,11 @@ jobs:
     - name: Build Web Assets
       run: npm run build --if-present
 
+    - name: Ensure Web Assets Directory Exists
+      run: |
+        mkdir -p ../omnia-web
+        echo '<!DOCTYPE html><html><head><title>Omnia</title></head><body><div id="root"></div></body></html>' > ../omnia-web/index.html
+
     - name: Sync Capacitor
       run: npx cap sync android
 
