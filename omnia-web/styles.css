@@ -1,0 +1,166 @@
+:root {
+    --bg-main: #fcfbf7;
+    --bg-card: #ffffff;
+    --bg-secondary: #f4f0ea;
+    --accent-gold: #c5a059;
+    --accent-dark: #111113;
+    --text-primary: #2c2a29;
+    --text-muted: #78746d;
+    --border-color: #e8e2d9;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
+
+body { background-color: var(--bg-main); color: var(--text-primary); }
+
+/* Top Bar */
+.top-bar { background: var(--accent-dark); color: #f4f0ea; font-size: 0.8rem; padding: 0.5rem 5%; }
+.top-bar-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 10px; }
+.top-controls { display: flex; gap: 10px; align-items: center; }
+.top-controls select { background: #222; color: #f4f0ea; border: 1px solid #444; border-radius: 6px; font-size: 0.8rem; padding: 4px 8px; cursor: pointer; }
+
+/* Navbar */
+.navbar { background: var(--bg-card); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; padding: 1rem 5%; }
+.nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; gap: 15px; }
+.menu-toggle { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--accent-dark); }
+.brand-logo { font-family: 'Cinzel', serif; font-size: 2rem; font-weight: 700; letter-spacing: 2px; color: var(--accent-dark); }
+.search-box input { width: 280px; padding: 0.6rem 1rem; border-radius: 25px; border: 1px solid var(--border-color); background: var(--bg-secondary); outline: none; font-size: 0.85rem; }
+.cart-btn { background: var(--accent-dark); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 20px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+.cart-btn:hover { background: var(--accent-gold); }
+.badge { background: var(--accent-gold); color: #fff; padding: 2px 7px; border-radius: 50%; font-size: 0.8rem; }
+
+/* Sidebar Drawer */
+.sidebar { position: fixed; top: 0; left: -320px; width: 320px; height: 100%; background: var(--bg-card); box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 300; transition: 0.3s ease; padding: 1.5rem; overflow-y: auto; }
+.sidebar.active { left: 0; }
+.sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; }
+.close-sidebar { background: none; border: none; font-size: 1.8rem; cursor: pointer; }
+.sidebar-links { list-style: none; }
+.sidebar-links li { margin-bottom: 0.9rem; }
+.sidebar-links a { text-decoration: none; color: var(--text-primary); font-weight: 500; font-size: 0.95rem; transition: 0.2s; }
+.sidebar-links a:hover { color: var(--accent-gold); }
+.sidebar-title { font-size: 0.75rem; font-weight: 700; color: var(--accent-gold); letter-spacing: 1.5px; margin-top: 1.5rem; margin-bottom: 0.8rem; text-transform: uppercase; }
+.sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: none; z-index: 250; }
+.sidebar-overlay.active { display: block; }
+
+/* Hero */
+.hero { position: relative; height: 50vh; min-height: 350px; display: flex; align-items: center; justify-content: center; overflow: hidden; text-align: center; color: #ffffff; background: #08080a; }
+#heroCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+.hero-content { position: relative; z-index: 3; max-width: 800px; padding: 0 1.5rem; }
+.hero-subtitle { letter-spacing: 4px; color: var(--accent-gold); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+.hero-content h1 { font-family: 'Cinzel', serif; font-size: 2.5rem; margin: 0.6rem 0; }
+.hero-content p { font-size: 1rem; color: #f4f0ea; margin-bottom: 1.5rem; }
+.hero-btn { display: inline-block; background: linear-gradient(135deg, #c5a059, #9e7d3b); color: #ffffff; text-decoration: none; padding: 0.8rem 2rem; border-radius: 30px; font-weight: 700; transition: 0.3s ease; }
+
+/* Container & Cards */
+.container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+.filter-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 2rem; flex-wrap: wrap; }
+.cat-btn { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem 1.4rem; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+.cat-btn.active, .cat-btn:hover { background: var(--accent-dark); color: #fff; border-color: var(--accent-dark); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2rem; }
+.card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; transition: 0.3s; cursor: pointer; }
+.card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }
+.card img { width: 100%; height: 260px; object-fit: cover; }
+.card-body { padding: 1.2rem; }
+.card-cat { font-size: 0.75rem; color: var(--accent-gold); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.card-title { font-size: 1.1rem; font-weight: 600; margin: 0.3rem 0; }
+.card-price { font-size: 1.3rem; font-weight: 800; color: var(--accent-dark); margin-bottom: 1rem; }
+.add-btn { width: 100%; background: var(--accent-dark); color: #ffffff; border: none; padding: 0.7rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+.add-btn:hover { background: var(--accent-gold); }
+
+/* Newsletter */
+.newsletter-section { padding: 3rem 1rem; max-width: 900px; margin: 2rem auto; }
+.newsletter-card { background: linear-gradient(135deg, #111115 0%, #1f1b2e 100%); border-radius: 20px; padding: 3rem 2rem; text-align: center; color: #fff; }
+.vip-badge { background: var(--accent-gold); color: #000; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 0.75rem; }
+.newsletter-card h2 { font-family: 'Cinzel', serif; font-size: 2rem; margin: 1rem 0 0.5rem; }
+.newsletter-card p { color: #b3b0a8; margin-bottom: 1.5rem; }
+.newsletter-form { display: flex; justify-content: center; gap: 10px; max-width: 500px; margin: 0 auto; }
+.newsletter-form input { flex: 1; padding: 0.8rem 1.2rem; border-radius: 30px; border: none; outline: none; }
+.newsletter-form button { background: var(--accent-gold); color: #fff; border: none; padding: 0.8rem 1.6rem; border-radius: 30px; font-weight: 700; cursor: pointer; }
+
+/* Footer */
+.footer { background: var(--accent-dark); color: #f4f0ea; padding: 3rem 5% 1rem; margin-top: 3rem; }
+.footer-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto; }
+.footer-logo { font-family: 'Cinzel', serif; font-size: 1.8rem; font-weight: 700; color: var(--accent-gold); margin-bottom: 0.8rem; }
+.footer h4 { color: var(--accent-gold); margin-bottom: 1rem; }
+.footer ul { list-style: none; }
+.footer ul li { margin-bottom: 0.5rem; }
+.footer a { color: #b3b0a8; text-decoration: none; font-size: 0.85rem; }
+
+.official-payment-logos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 0.5rem; }
+.card-badge { height: 28px; padding: 0 10px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.75rem; letter-spacing: 0.5px; }
+.visa-official { background: #1a1f71; color: #ffffff; font-style: italic; }
+.mastercard-official { background: #111; padding: 0 8px; }
+.mc-red { width: 14px; height: 14px; background: #eb001b; border-radius: 50%; display: inline-block; }
+.mc-yellow { width: 14px; height: 14px; background: #ff5f00; border-radius: 50%; display: inline-block; margin-left: -6px; opacity: 0.9; }
+.discover-official { background: #ffffff; color: #231f20; border: 1px solid #ddd; }
+.amex-official { background: #006fcf; color: #ffffff; }
+.diners-official { background: #ffffff; border: 1px solid #ddd; width: 42px; }
+.diners-official span { width: 16px; height: 16px; border: 2px solid #004a97; border-radius: 50%; display: inline-block; }
+.paypal-official { background: #ffc439; font-style: italic; font-size: 0.85rem; }
+.pp-b1 { color: #003087; }
+.pp-b2 { color: #0079c1; }
+
+.footer-bottom { text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #333; font-size: 0.8rem; color: #888; }
+
+/* Modals General */
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 400; }
+.modal-content { background: var(--bg-card); padding: 2rem; border-radius: 16px; width: 90%; max-width: 500px; position: relative; max-height: 90vh; overflow-y: auto; }
+.product-detail { max-width: 750px; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: center; }
+@media(max-width: 600px) { .modal-grid { grid-template-columns: 1fr; } .newsletter-form { flex-direction: column; } }
+.modal-img-container img { width: 100%; height: 280px; object-fit: cover; border-radius: 12px; }
+.close-btn { position: absolute; right: 1.5rem; top: 1rem; font-size: 1.8rem; background: none; border: none; cursor: pointer; color: #333; }
+.dark-close { color: #ffffff !important; }
+.modal-price { font-size: 1.6rem; font-weight: 800; margin: 0.8rem 0; color: var(--accent-dark); }
+.cultural-tip { background: #fdf8ef; border: 1px solid #e2d2b4; border-radius: 8px; padding: 0.8rem; font-size: 0.8rem; color: #6d5830; margin: 0.8rem 0; }
+.qty-selector { display: flex; align-items: center; gap: 10px; margin: 1rem 0; }
+.qty-controls { display: flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
+.qty-controls button { background: var(--bg-secondary); border: none; width: 32px; height: 32px; font-weight: 700; cursor: pointer; }
+.qty-controls input { width: 40px; border: none; text-align: center; font-weight: 700; outline: none; }
+
+/* Botones Principales en Modo Oscuro */
+.add-btn-large { width: 100%; background: var(--accent-dark); color: #ffffff; border: none; padding: 0.9rem; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 1rem; font-size: 0.95rem; transition: 0.3s; }
+.dark-add-btn { background: #111113 !important; color: #ffffff !important; }
+.dark-add-btn:hover { background: var(--accent-gold) !important; }
+
+/* Enlace "Ver Otras Opciones de Pago" */
+.other-payments-link { text-align: center; margin-top: 1.2rem; padding-top: 0.9rem; border-top: 1px dashed var(--border-color); }
+.other-payments-link a { color: #111113 !important; font-size: 0.85rem; font-weight: 800; text-decoration: underline; transition: 0.2s; }
+.other-payments-link a:hover { color: var(--accent-gold) !important; }
+
+.alt-payment-btn { background: #111113 !important; color: #ffffff !important; margin-top: 10px; font-size: 0.85rem; }
+
+/* DISEÑO DE LA VENTANA MODAL DE PAGO MODERNA Y LUXURY */
+.modern-payment-modal { background: #111113 !important; color: #ffffff !important; border: 1px solid var(--accent-gold); max-width: 580px !important; padding: 2.2rem !important; border-radius: 20px !important; }
+.secure-badge { background: rgba(197, 160, 89, 0.2); color: var(--accent-gold); padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; display: inline-block; margin-bottom: 8px; }
+.payment-modal-header h2 { font-family: 'Cinzel', serif; font-size: 1.8rem; color: #ffffff; margin-bottom: 4px; }
+.payment-modal-header p { font-size: 0.85rem; color: #a0a0a5; margin-bottom: 1.2rem; }
+
+.payment-accordion { display: flex; flex-direction: column; gap: 12px; }
+.accordion-item { border: 1px solid #2a2a2e; border-radius: 12px; overflow: hidden; background: #18181b; }
+.accordion-header { width: 100%; background: #18181b; border: none; padding: 1.1rem; display: flex; justify-content: space-between; align-items: center; color: #ffffff; cursor: pointer; transition: 0.3s; }
+.accordion-header:hover { background: #222226; }
+.acc-title { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.9rem; }
+.acc-icon { font-size: 1.1rem; }
+.acc-arrow { color: var(--accent-gold); font-size: 0.8rem; }
+.accordion-content { display: none; padding: 1.2rem; background: #111113; border-top: 1px solid #2a2a2e; }
+.accordion-content.active { display: block; }
+.acc-desc { font-size: 0.8rem; color: #b0b0b5; margin-bottom: 12px; }
+
+.checkout-input-modern { width: 100%; padding: 0.8rem; background: #18181b; border: 1px solid #333338; border-radius: 8px; color: #ffffff; font-size: 0.85rem; outline: none; margin-bottom: 10px; }
+.checkout-input-modern:focus { border-color: var(--accent-gold); }
+
+.btn-pay-action { width: 100%; background: linear-gradient(135deg, #c5a059, #9e7d3b); color: #ffffff; border: none; padding: 0.85rem; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 8px; font-size: 0.9rem; transition: 0.3s; }
+.btn-pay-action:hover { opacity: 0.9; }
+
+/* Tarjeta Bancaria Citibank Personalizada */
+.modern-bank-card { background: #18181b; border: 1px solid #333338; border-left: 4px solid var(--accent-gold); border-radius: 10px; padding: 1rem; margin-bottom: 12px; }
+.bank-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #222226; font-size: 0.82rem; color: #d0d0d5; }
+.bank-row:last-child { border-bottom: none; }
+.highlight-code { color: var(--accent-gold); font-size: 0.9rem; letter-spacing: 0.5px; }
+
+/* Cripto Card */
+.modern-crypto-card { background: #18181b; border: 1px solid #333338; border-radius: 10px; padding: 1rem; margin-bottom: 12px; text-align: left; }
+.crypto-label { font-size: 0.8rem; color: #a0a0a5; font-weight: bold; }
+.crypto-code { word-break: break-all; font-size: 0.82rem; background: #000; color: #f0b90b; padding: 8px; border-radius: 6px; display: block; margin-top: 6px; font-family: monospace; }
+.crypto-action { background: #f0b90b !important; color: #000000 !important; }

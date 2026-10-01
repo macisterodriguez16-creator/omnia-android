@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNIA - Mercado Global de Alta Costura y Arte</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- SDK de PayPal Express -->
+    <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
+</head>
+<body>
+
+    <!-- BARRA SUPERIOR -->
+    <div class="top-bar">
+        <div class="top-bar-content">
+            <span id="culturalNotice">🇺🇸 EE. UU.: Servicio con garantía de devolución estándar de 30 días y entregas exprés prioritarias.</span>
+            <div class="top-controls">
+                <select id="langSelect" onchange="changeLang()">
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="en">🇺🇸 English</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="it">🇮🇹 Italiano</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="ar">🇦🇪 العربية</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="ko">🇰🇷 한국어</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="nl">🇳🇱 Nederlands</option>
+                    <option value="sv">🇸🇪 Svenska</option>
+                    <option value="tr">🇹🇷 Türkçe</option>
+                    <option value="pl">🇵🇱 Polski</option>
+                    <option value="uk">🇺🇦 Українська</option>
+                </select>
+
+                <select id="currencySelect" onchange="changeCurrency()">
+                    <option value="USD">🇺🇸 USD ($)</option>
+                    <option value="EUR">🇪🇺 EUR (€)</option>
+                    <option value="GBP">🇬🇧 GBP (£)</option>
+                    <option value="CAD">🇨🇦 CAD ($)</option>
+                    <option value="MXN">🇲🇽 MXN ($)</option>
+                    <option value="COP">🇨🇴 COP ($)</option>
+                    <option value="ARS">🇦🇷 ARS ($)</option>
+                    <option value="CLP">🇨🇱 CLP ($)</option>
+                    <option value="PEN">🇵🇪 PEN (S/)</option>
+                    <option value="BRL">🇧🇷 BRL (R$)</option>
+                    <option value="JPY">🇯🇵 JPY (¥)</option>
+                    <option value="CNY">🇨🇳 CNY (¥)</option>
+                    <option value="AED">🇦🇪 AED (DH)</option>
+                    <option value="AUD">🇦🇺 AUD ($)</option>
+                    <option value="CHF">🇨🇭 CHF (CHF)</option>
+                    <option value="INR">🇮🇳 INR (₹)</option>
+                    <option value="KRW">🇰🇷 KRW (₩)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVEGACIÓN -->
+    <header class="navbar">
+        <div class="nav-container">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <div class="brand-logo">OMNIA</div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar moda, arte, accesorios..." onkeyup="filterProducts()">
+            </div>
+            <div class="nav-actions">
+                <button class="cart-btn" onclick="toggleCart()">Carrito <span id="cartCount" class="badge">0</span></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Menú OMNIA</h3>
+            <button class="close-sidebar" onclick="toggleSidebar()">×</button>
+        </div>
+        <ul class="sidebar-links">
+            <li><a href="#hero" onclick="toggleSidebar()">Inicio</a></li>
+            <li><a href="#catalog" onclick="toggleSidebar()">Catálogo Exclusivo</a></li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openContactModal();">Contacto & Soporte</a></li>
+            <hr>
+            <li class="sidebar-title">Políticas Legales</li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('shipping');">Envíos y Logística</a></li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('returns');">Devoluciones y Garantía</a></li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('privacy');">Privacidad & Datos</a></li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('terms');">Términos del Servicio</a></li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('legal');">Aviso Legal</a></li>
+        </ul>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- HERO -->
+    <section class="hero" id="hero">
+        <canvas id="heroCanvas"></canvas>
+        <div class="hero-content">
+            <span class="hero-subtitle">ALTA COSTURA & TENDENCIA 2026</span>
+            <h1>Elegancia Vibrante & Diseño Exclusivo</h1>
+            <p>Descubre colecciones limitadas creadas por los diseñadores más influyentes del mundo.</p>
+            <a href="#catalog" class="hero-btn">Ver Colección Exclusiva</a>
+        </div>
+    </section>
+
+    <!-- CATÁLOGO -->
+    <main class="container" id="catalog">
+        <div class="filter-bar">
+            <button class="cat-btn active" onclick="filterCategory('Todos')">Todos</button>
+            <button class="cat-btn" onclick="filterCategory('Moda')">Moda</button>
+            <button class="cat-btn" onclick="filterCategory('Calzado')">Calzado</button>
+            <button class="cat-btn" onclick="filterCategory('Accesorios')">Accesorios</button>
+            <button class="cat-btn" onclick="filterCategory('Arte')">Arte</button>
+        </div>
+        <div class="grid" id="productGrid"></div>
+    </main>
+
+    <!-- NEWSLETTER -->
+    <section class="newsletter-section">
+        <div class="newsletter-card">
+            <span class="vip-badge">MEMBRESÍA VIP</span>
+            <h2>Únete al Club Privado OMNIA</h2>
+            <p>Obtén un 15% de descuento inmediato y acceso prioritario a lanzamientos y colecciones exclusivas.</p>
+            <form class="newsletter-form" onsubmit="subscribeEmail(event)">
+                <input type="email" placeholder="Ingresa tu correo electrónico personal..." required>
+                <button type="submit">Obtener Acceso</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <div class="footer-logo">OMNIA</div>
+                <p>Ecosistema global de alta moda, piezas únicas y obras de arte seleccionadas con los más altos estándares de calidad.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Contacto Corporativo</h4>
+                <p>📧 Email: <span id="footerEmail">soporte@omnia.com</span></p>
+                <p>📞 Teléfono: <span id="footerPhone">+1 (800) 555-OMNIA</span></p>
+            </div>
+            <div class="footer-col">
+                <h4>Información Legal</h4>
+                <ul>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('shipping')">Envíos Internacionales</a></li>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('returns')">Política de Reembolsos</a></li>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('privacy')">Protección de Datos</a></li>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('terms')">Términos del Servicio</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Métodos de Pago Aceptados</h4>
+                <div class="official-payment-logos">
+                    <div class="card-badge visa-official">VISA</div>
+                    <div class="card-badge mastercard-official"><span class="mc-red"></span><span class="mc-yellow"></span></div>
+                    <div class="card-badge discover-official">DISCOVER</div>
+                    <div class="card-badge amex-official">AMEX</div>
+                    <div class="card-badge diners-official"><span></span></div>
+                    <div class="card-badge paypal-official"><span class="pp-b1">Pay</span><span class="pp-b2">Pal</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 OMNIA Global Fashion & Art Marketplace Inc. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL PRODUCTO -->
+    <div class="modal" id="productModal">
+        <div class="modal-content product-detail">
+            <button class="close-btn" onclick="closeProductModal()">×</button>
+            <div class="modal-grid">
+                <div class="modal-img-container">
+                    <img id="modalProductImg" src="" alt="Producto">
+                </div>
+                <div class="modal-info">
+                    <span id="modalProductCat" class="card-cat"></span>
+                    <h2 id="modalProductTitle"></h2>
+                    <p id="modalProductDesc"></p>
+                    <div id="modalProductPrice" class="modal-price"></div>
+                    <div class="cultural-tip" id="modalCulturalTip"></div>
+                    
+                    <div class="qty-selector">
+                        <label>Cantidad:</label>
+                        <div class="qty-controls">
+                            <button type="button" onclick="decrementQty()">-</button>
+                            <input type="number" id="productQty" value="1" min="1" max="100" readonly>
+                            <button type="button" onclick="incrementQty()">+</button>
+                        </div>
+                    </div>
+
+                    <button class="add-btn-large dark-add-btn" onclick="addModalToCart()">Añadir al Carrito</button>
+                    
+                    <div class="express-checkout-box">
+                        <p class="express-title">Pago Exprés Seguro:</p>
+                        <div id="paypalModalButtonContainer"></div>
+                    </div>
+
+                    <div class="other-payments-link">
+                        <a href="javascript:void(0)" onclick="openOtherPaymentsModal()">💳 Ver Otras Opciones de Pago (Tarjetas, Depósitos y Cripto)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CARRITO -->
+    <div class="modal" id="cartModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="toggleCart()">×</button>
+            <h2>Tu Carrito de Compras</h2>
+            <div id="cartItems"></div>
+            
+            <div class="cart-summary">
+                <h3>Total: <span id="cartTotal">$0.00</span></h3>
+                
+                <div class="checkout-methods">
+                    <div id="paypalCartButtonContainer"></div>
+                    
+                    <button class="add-btn-large alt-payment-btn" onclick="openOtherPaymentsModal()">
+                        💳 Ver Otras Opciones de Pago (Tarjetas, Depósitos y Cripto)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MODERNO Y PROFESIONAL DE OTRAS OPCIONES DE PAGO -->
+    <div class="modal" id="otherPaymentsModal">
+        <div class="modal-content modern-payment-modal">
+            <button class="close-btn dark-close" onclick="closeOtherPaymentsModal()">×</button>
+            
+            <div class="payment-modal-header">
+                <span class="secure-badge">🔒 PASARELA SEGURA SSL 256-BIT</span>
+                <h2>Checkout Global OMNIA</h2>
+                <p>Selecciona tu método preferido de pago de alta seguridad:</p>
+            </div>
+
+            <div class="payment-accordion">
+                <!-- Opción 1: Tarjetas de Crédito / Débito -->
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion('cardOption')">
+                        <div class="acc-title">
+                            <span class="acc-icon">💳</span>
+                            <span>Tarjeta de Crédito o Débito</span>
+                        </div>
+                        <span class="acc-arrow">▼</span>
+                    </button>
+                    <div id="cardOption" class="accordion-content">
+                        <p class="acc-desc">Procesamiento seguro directo en tu moneda local.</p>
+                        <form onsubmit="processCardPayment(event)">
+                            <div class="form-group">
+                                <input type="text" placeholder="Nombre completo del titular" required class="checkout-input-modern">
+                            </div>
+                            <div class="form-group">
+                                <input type="text" placeholder="Número de Tarjeta (16 dígitos)" required class="checkout-input-modern">
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" placeholder="MM/AA" required class="checkout-input-modern" style="flex:1;">
+                                <input type="text" placeholder="CVC / CVV" required class="checkout-input-modern" style="flex:1;">
+                            </div>
+                            <button type="submit" class="btn-pay-action">Procesar Pago con Tarjeta</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Opción 2: Transferencia / Depósito Bancario Citibank -->
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion('bankOption')">
+                        <div class="acc-title">
+                            <span class="acc-icon">🏦</span>
+                            <span>Transferencia o Depósito Bancario (EE. UU. / Int.)</span>
+                        </div>
+                        <span class="acc-arrow">▼</span>
+                    </button>
+                    <div id="bankOption" class="accordion-content">
+                        <p class="acc-desc">Transfiere directamente a nuestra cuenta bancaria en EE. UU.:</p>
+                        <div class="modern-bank-card">
+                            <div class="bank-row"><span>Beneficiario:</span> <strong>Maciste Rodriguez</strong></div>
+                            <div class="bank-row"><span>Banco:</span> <strong>Citibank (USA)</strong></div>
+                            <div class="bank-row"><span>Tipo de Cuenta:</span> <strong>CHECKING (Corriente)</strong></div>
+                            <div class="bank-row"><span>Número de Cuenta:</span> <strong class="highlight-code">70580400002335298</strong></div>
+                            <div class="bank-row"><span>Ruta ABA:</span> <strong>031100209</strong></div>
+                            <div class="bank-row"><span>Código SWIFT:</span> <strong>CITIUS33</strong></div>
+                            <div class="bank-row"><span>Dirección del Banco:</span> <small>111 Wall Street, New York, NY 10043, USA</small></div>
+                        </div>
+                        <button class="btn-pay-action" onclick="confirmBankTransfer()">Notificar Transferencia / Depósito</button>
+                    </div>
+                </div>
+
+                <!-- Opción 3: Criptomonedas (Binance Pay / USDT) -->
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion('cryptoOption')">
+                        <div class="acc-title">
+                            <span class="acc-icon">🟡</span>
+                            <span>Criptomonedas (USDT / Binance Pay)</span>
+                        </div>
+                        <span class="acc-arrow">▼</span>
+                    </button>
+                    <div id="cryptoOption" class="accordion-content">
+                        <p class="acc-desc">Pago inmediato sin comisiones adicionales vía USDT:</p>
+                        <div class="modern-crypto-card">
+                            <p class="crypto-label">Billetera USDT (Red TRC20 / BEP20):</p>
+                            <code class="crypto-code">TYs9X4k2mQ8pL3nB1vC7wZ5aR6tE8uY0iM</code>
+                        </div>
+                        <button class="btn-pay-action crypto-action" onclick="confirmCryptoPayment()">Confirmar Transferencia Cripto</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POLÍTICAS -->
+    <div class="modal" id="policyModal">
+        <div class="modal-content policy-modal-content">
+            <button class="close-btn" onclick="closePolicyModal()">×</button>
+            <h2 id="policyTitle"></h2>
+            <div id="policyBody" class="policy-body"></div>
+        </div>
+    </div>
+
+    <!-- MODAL CONTACTO -->
+    <div class="modal" id="contactModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeContactModal()">×</button>
+            <h2>Atención al Cliente OMNIA</h2>
+            <form onsubmit="sendContactForm(event)">
+                <div class="form-group">
+                    <label>Correo Electrónico:</label>
+                    <p><strong id="contactEmail">soporte@omnia.com</strong></p>
+                </div>
+                <div class="form-group">
+                    <label>Línea Telefónica Directa:</label>
+                    <p><strong id="contactPhone">+1 (800) 555-OMNIA</strong></p>
+                </div>
+                <div class="form-group">
+                    <label>Tu Mensaje o Consulta:</label>
+                    <textarea rows="4" required placeholder="¿En qué podemos ayudarte hoy?"></textarea>
+                </div>
+                <button type="submit" class="add-btn-large dark-add-btn">Enviar Mensaje</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
