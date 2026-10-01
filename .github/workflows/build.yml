@@ -32,8 +32,7 @@ jobs:
         mkdir -p omnia-web
         wget --mirror --convert-links --adjust-extension --page-requisites --no-parent -P temp_web https://omnia-3l2.pages.dev || true
         cp -r temp_web/omnia-3l2.pages.dev/* omnia-web/ || true
-        # Inyectar consola de depuración Eruda en index.html
-        sed -i 's|</head>|<script src="https://cdn.jsdelivr.net/npm/eruda"></script><script>eruda.init();</script></head>|g' omnia-web/index.html || true
+        sed -i 's|<head>|<head><script src="https://cdn.jsdelivr.net/npm/eruda"></script><script>eruda.init();</script>|g' omnia-web/index.html || true
         mkdir -p android/app/src/main/assets
 
     - name: Sync Capacitor
