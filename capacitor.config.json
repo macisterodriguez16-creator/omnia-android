@@ -4,8 +4,6 @@
   "webDir": "omnia-web",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://omnia-3l2.pages.dev",
-    "cleartext": true,
     "androidScheme": "https"
   },
   "plugins": {

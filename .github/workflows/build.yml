@@ -27,11 +27,13 @@ jobs:
     - name: Install dependencies
       run: npm ci || npm install
 
-    - name: Create required directories for Capacitor
+    - name: Download web build from Cloudflare
       run: |
-        mkdir -p android/app/src/main/assets
         mkdir -p omnia-web
-        echo '<!DOCTYPE html><html><body><h1>Loading...</h1></body></html>' > omnia-web/index.html
+        wget -q -O omnia-web/index.html https://omnia-3l2.pages.dev
+
+    - name: Create required assets directory
+      run: mkdir -p android/app/src/main/assets
 
     - name: Sync Capacitor
       run: npx cap sync android
