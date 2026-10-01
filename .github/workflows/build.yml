@@ -13,25 +13,6 @@ jobs:
     - name: Checkout Android repository
       uses: actions/checkout@v4
 
-    - name: Clone Web repository directly
-      run: |
-        git clone https://${{ secrets.WEB_REPO_TOKEN }}@github.com/macisterodriguez16-creator/omnia-web.git omnia-web-temp
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22'
-
-    - name: Build Web Application and prepare assets
-      run: |
-        cd omnia-web-temp
-        npm ci || npm install
-        npm run build
-        mkdir -p ../omnia-web
-        if [ -d "dist" ]; then cp -r dist/* ../omnia-web/; fi
-        if [ -d "build" ]; then cp -r build/* ../omnia-web/; fi
-        if [ -d "www" ]; then cp -r www/* ../omnia-web/; fi
-
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
@@ -43,7 +24,7 @@ jobs:
       with:
         gradle-version: '8.13'
 
-    - name: Install Android wrapper dependencies
+    - name: Install dependencies
       run: npm ci || npm install
 
     - name: Sync Capacitor
