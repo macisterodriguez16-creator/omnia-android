@@ -27,11 +27,19 @@ jobs:
     - name: Install dependencies
       run: npm ci || npm install
 
-    - name: Download complete web build assets
+    - name: Download web build assets
       run: |
+        rm -rf omnia-web
         mkdir -p omnia-web
-        wget --mirror --convert-links --adjust-extension --page-requisites --no-parent -P temp_web https://omnia-3l2.pages.dev || true
-        cp -r temp_web/omnia-3l2.pages.dev/* omnia-web/ || true
+        # Descargar el sitio web preservando la estructura
+        wget --recursive --page-requisites --html-extension --convert-links --restrict-file-names=windows -P temp_web https://omnia-3l2.pages.dev/ || true
+        # Mover todo el contenido extraído a omnia-web
+        find temp_web -name "index.html" -exec dirname {} \; | head -n 1 | xargs -I {} cp -r {}/. omnia-web/ || true
+        # Si no se encontró index.html, crear una estructura base de rescate
+        if [ ! -f "omnia-web/index.html" ]; then
+          curl -sL https://omnia-3l2.pages.dev/ -o omnia-web/index.html
+        fi
+        # Inyectar consola Eruda para depurar la pantalla blanca
         sed -i 's|<head>|<head><script src="https://cdn.jsdelivr.net/npm/eruda"></script><script>eruda.init();</script>|g' omnia-web/index.html || true
         mkdir -p android/app/src/main/assets
 
