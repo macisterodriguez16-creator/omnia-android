@@ -219,14 +219,15 @@ function renderProducts(items) {
     const langData = i18n[currentLang] || i18n['es'];
     
     grid.innerHTML = items.map(p => {
-        const prodLang = langData[p.key] || i18n['es'][p.key];
+        const prodLang = langData[p.key] || i18n['es'][p.key] || {};
+        const productName = p.titleCustom || prodLang.name || p.key;
         const price = (p.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return `
             <div class="card" onclick="openProductModal(${p.id})">
-                <img src="${p.image}" alt="${prodLang.name}">
+                <img src="${p.image}" alt="${productName}">
                 <div class="card-body">
                     <div class="card-cat">${p.category}</div>
-                    <div class="card-title">${prodLang.name}</div>
+                    <div class="card-title">${productName}</div>
                     <div class="card-price">${symbols[currentCurrency]}${price}</div>
                     <button class="add-btn" onclick="event.stopPropagation(); addToCart(${p.id})">${langData.addBtn}</button>
                 </div>
@@ -262,19 +263,21 @@ function changeCurrency() {
     updateCulturalNotice();
     renderProducts(products);
     updateCartUI();
-    initPayPalButtons();
+
 }
 
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
     const langData = i18n[currentLang] || i18n['es'];
     const prodLang = langData[selectedProduct.key] || i18n['es'][selectedProduct.key];
+    const productName = selectedProduct.titleCustom || prodLang.name || selectedProduct.key;
+    const productDescription = selectedProduct.descCustom || prodLang.desc || '';
     const price = (selectedProduct.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     document.getElementById('modalProductImg').src = selectedProduct.image;
     document.getElementById('modalProductCat').textContent = selectedProduct.category;
-    document.getElementById('modalProductTitle').textContent = prodLang.name;
-    document.getElementById('modalProductDesc').textContent = prodLang.desc;
+    document.getElementById('modalProductTitle').textContent = productName;
+    document.getElementById('modalProductDesc').textContent = productDescription;
     document.getElementById('modalProductPrice').textContent = `${symbols[currentCurrency]}${price}`;
     document.getElementById('modalCulturalTip').innerHTML = countryTraditions[currentCurrency] || countryTraditions['USD'];
     document.getElementById('productQty').value = 1;
@@ -336,9 +339,9 @@ function initPayPalButtons() {
         }).render('#paypalModalButtonContainer');
     }
 
-    const cartContainer = document.getElementById('paypalCartButtonContainer');
-    if (cartContainer) {
-        cartContainer.innerHTML = '';
+    const otherPaymentContainer = document.getElementById('paypalOtherPaymentContainer');
+    if (otherPaymentContainer) {
+        otherPaymentContainer.innerHTML = '';
         if (cart.length > 0) {
             paypal.Buttons({
                 style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'checkout' },
@@ -357,16 +360,17 @@ function initPayPalButtons() {
                         alert(`¡Gracias por tu compra, ${details.payer.name.given_name}! Orden confirmada ID: ${details.id}`);
                         cart = [];
                         updateCartUI();
-                        toggleCart();
+                        closeOtherPaymentsModal();
                     });
                 }
-            }).render('#paypalCartButtonContainer');
+            }).render('#paypalOtherPaymentContainer');
         }
     }
 }
 
 function openOtherPaymentsModal() {
     document.getElementById('otherPaymentsModal').style.display = 'flex';
+    initPayPalButtons();
 }
 
 function closeOtherPaymentsModal() {
@@ -375,38 +379,90 @@ function closeOtherPaymentsModal() {
 
 function toggleAccordion(id) {
     const target = document.getElementById(id);
-    const isOpen = target.classList.contains('active');
-    
-    document.querySelectorAll('.accordion-content').forEach(el => el.classList.remove('active'));
-    
+    if (!target) return;
+
+    const isOpen = target.classList.contains("open");
+
+    document.querySelectorAll(".accordion-content").forEach(el => el.classList.remove("open"));
+
     if (!isOpen) {
-        target.classList.add('active');
+        target.classList.add("open");
     }
 }
 
 function processCardPayment(e) {
     e.preventDefault();
-    alert('¡Procesando pago con tarjeta directa mediante pasarela de cobro segura! Recibirás la confirmación inmediatamente.');
-    cart = [];
-    updateCartUI();
-    closeOtherPaymentsModal();
-    if(document.getElementById('productModal')) closeProductModal();
+
+    const form = document.getElementById("cardPaymentForm");
+    if (!form) return;
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const status = document.getElementById("cardPaymentStatus");
+    if (status) {
+        status.textContent = "El formulario está listo. La pasarela de pago segura todavía debe conectarse antes de procesar la transacción.";
+        status.className = "card-payment-status pending";
+    }
 }
 
+function continueToPayment() {
+    const country = document.getElementById("shippingCountry");
+    const name = document.getElementById("shippingName");
+    const address = document.getElementById("shippingAddress");
+    const address2 = document.getElementById("shippingAddress2");
+    const city = document.getElementById("shippingCity");
+    const state = document.getElementById("shippingState");
+    const postal = document.getElementById("shippingPostal");
+    const phone = document.getElementById("shippingPhone");
+
+    if (!country || !name || !address || !city || !state || !postal || !phone) return;
+
+    const postalOptionalCountries = ["AE", "HK", "MO", "IE", "JM", "ZA"];
+    const stateOptionalCountries = ["SG", "HK", "MO", "IE", "LU", "MC", "VA"];
+
+    postal.required = !postalOptionalCountries.includes(country.value);
+    state.required = !stateOptionalCountries.includes(country.value);
+
+    const fields = [country, name, address, city, state, postal, phone];
+
+    for (const field of fields) {
+        if (field.required && !field.value.trim()) {
+            field.focus();
+            field.reportValidity();
+            return;
+        }
+    }
+
+    window.omniaShippingAddress = {
+        country: country.value,
+        name: name.value.trim(),
+        address: address.value.trim(),
+        address2: address2 ? address2.value.trim() : "",
+        city: city.value.trim(),
+        state: state.value.trim(),
+        postal: postal.value.trim(),
+        phone: phone.value.trim()
+    };
+
+    const shippingSection = document.querySelector(".shipping-checkout-section");
+    if (shippingSection) {
+        shippingSection.classList.add("shipping-complete");
+    }
+
+    const paymentAccordion = document.querySelector(".payment-accordion");
+    if (paymentAccordion) {
+        paymentAccordion.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
 function confirmBankTransfer() {
-    alert('¡Gracias por notificar tu depósito/transferencia a nuestra cuenta de Citibank! Un agente verificará la transacción.');
-    cart = [];
-    updateCartUI();
-    closeOtherPaymentsModal();
-    if(document.getElementById('productModal')) closeProductModal();
+    alert("Las instrucciones de transferencia estarán disponibles cuando se conecte el proveedor de pagos correspondiente.");
 }
 
 function confirmCryptoPayment() {
-    alert('¡Notificación enviada al sistema! Verificaremos la red Blockchain para despachar tu pedido.');
-    cart = [];
-    updateCartUI();
-    closeOtherPaymentsModal();
-    if(document.getElementById('productModal')) closeProductModal();
+    alert("El pago digital estará disponible cuando se conecte el proveedor de pagos correspondiente.");
 }
 
 function openContactModal() {
@@ -419,8 +475,25 @@ function closeContactModal() {
 
 function sendContactForm(e) {
     e.preventDefault();
-    alert('¡Gracias por comunicarte con OMNIA! Tu mensaje ha sido recibido.');
-    closeContactModal();
+
+    const form = document.getElementById("contactForm");
+    const status = document.getElementById("contactStatus");
+    const name = document.getElementById("contactName").value.trim();
+    const email = document.getElementById("contactEmailInput").value.trim();
+    const reason = document.getElementById("contactReason").value;
+    const order = document.getElementById("contactOrder").value.trim();
+    const message = document.getElementById("contactMessage").value.trim();
+
+    if (!name || !email || !reason || !message) {
+        status.textContent = "Completa los campos obligatorios para continuar.";
+        status.className = "contact-status error";
+        return;
+    }
+
+    status.textContent = "Mensaje preparado correctamente. Próximamente quedará conectado al sistema de soporte de OMNIA.";
+    status.className = "contact-status success";
+
+    form.reset();
 }
 
 function openPolicy(key) {
@@ -447,7 +520,8 @@ function filterProducts() {
     const query = document.getElementById('searchInput').value.toLowerCase();
     const langData = i18n[currentLang] || i18n['es'];
     const filtered = products.filter(p => {
-        const prodLang = langData[p.key] || i18n['es'][p.key];
+        const prodLang = langData[p.key] || i18n['es'][p.key] || {};
+        const productName = p.titleCustom || prodLang.name || p.key;
         return prodLang.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query);
     });
     renderProducts(filtered);
@@ -460,31 +534,44 @@ function addToCart(id) {
 }
 
 function updateCartUI() {
-    document.getElementById('cartCount').textContent = cart.length;
-    const cartItems = document.getElementById('cartItems');
-    const langData = i18n[currentLang] || i18n['es'];
+    document.getElementById("cartCount").textContent = cart.length;
+    const cartItems = document.getElementById("cartItems");
+    const langData = i18n[currentLang] || i18n["es"];
     const totalUSD = cart.reduce((sum, p) => sum + p.priceUSD, 0);
-    const totalConverted = (totalUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    
-    cartItems.innerHTML = cart.map(p => {
-        const prodLang = langData[p.key] || i18n['es'][p.key];
-        const price = (p.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        return `
-            <div style="display:flex; justify-content:space-between; margin:10px 0; border-bottom:1px solid #e8e2d9; padding-bottom:5px;">
-                <span>${prodLang.name}</span>
-                <span style="font-weight:bold;">${symbols[currentCurrency]}${price}</span>
-            </div>
-        `;
-    }).join('');
-    
-    document.getElementById('cartTotal').textContent = `${symbols[currentCurrency]}${totalConverted}`;
-    initPayPalButtons();
+    const totalConverted = (totalUSD * rates[currentCurrency]).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (cart.length === 0) {
+        cartItems.innerHTML = `<div class="cart-empty">Tu carrito está vacío.</div>`;
+    } else {
+        cartItems.innerHTML = cart.map((p, index) => {
+            const prodLang = langData[p.key] || i18n["es"][p.key];
+        const productName = p.titleCustom || prodLang.name || p.key;
+            const price = (p.priceUSD * rates[currentCurrency]).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return `
+                <div class="cart-item-row">
+                    <div class="cart-item-info">
+                        <span class="cart-item-name">${prodLang.name}</span>
+                        <span class="cart-item-price">${symbols[currentCurrency]}${price}</span>
+                    </div>
+                    <button type="button" class="cart-remove-btn" onclick="removeFromCart(${index})">Eliminar</button>
+                </div>
+            `;
+        }).join("");
+    }
+
+    document.getElementById("cartTotal").textContent = `${symbols[currentCurrency]}${totalConverted}`;
+}
+
+function removeFromCart(index) {
+    if (index < 0 || index >= cart.length) return;
+    cart.splice(index, 1);
+    updateCartUI();
 }
 
 function toggleCart() {
     const modal = document.getElementById('cartModal');
     modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
-    initPayPalButtons();
+
 }
 
 function toggleSidebar() {
@@ -550,17 +637,110 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* CONEXIÓN API PRINTIFY & EBAY EN TIEMPO REAL */
-const OMNIA_API_BACKEND = "https://omnia.macisterodriguez16.workers.dev";
+const OMNIA_API_BACKEND = "https://omnia-api.macisterodriguez16.workers.dev";
+
+function getPrintifyCategory(item) {
+    const text = `${item.title || ""} ${item.description || ""}`.toLowerCase();
+
+    if (
+        text.includes("canvas") ||
+        text.includes("poster") ||
+        text.includes("print") ||
+        text.includes("wall art") ||
+        text.includes("art print") ||
+        text.includes("framed art") ||
+        text.includes("framed canvas")
+    ) {
+        return "Arte impreso";
+    }
+
+    if (
+        text.includes("sneaker") ||
+        text.includes("shoe") ||
+        text.includes("sandal") ||
+        text.includes("clog") ||
+        text.includes("boot") ||
+        text.includes("slide")
+    ) {
+        return "Calzado";
+    }
+
+    if (
+        text.includes("shirt") ||
+        text.includes("hoodie") ||
+        text.includes("jacket") ||
+        text.includes("pullover") ||
+        text.includes("sweatshirt") ||
+        text.includes("dress") ||
+        text.includes("top") ||
+        text.includes("tee") ||
+        text.includes("pants") ||
+        text.includes("shorts") ||
+        text.includes("leggings") ||
+        text.includes("swimwear") ||
+        text.includes("apparel")
+    ) {
+        return "Moda";
+    }
+
+    return "Accesorios";
+}
+
+function createPrintifyProductId(printifyId) {
+    let hash = 0;
+
+    for (let i = 0; i < printifyId.length; i++) {
+        hash = ((hash << 5) - hash) + printifyId.charCodeAt(i);
+        hash |= 0;
+    }
+
+    return 100000 + Math.abs(hash);
+}
+
+async function getPrintifyProducts() {
+    const allProducts = [];
+    let page = 1;
+    let lastPage = 1;
+
+    while (page <= lastPage) {
+        const res = await fetch(`${OMNIA_API_BACKEND}/api/printify/products?page=${page}`);
+
+        if (!res.ok) {
+            throw new Error(`Error HTTP Printify: ${res.status}`);
+        }
+
+        const json = await res.json();
+
+        if (
+            json.status !== "success" ||
+            !json.data ||
+            !Array.isArray(json.data.data)
+        ) {
+            throw new Error("Respuesta de Printify no válida.");
+        }
+
+        allProducts.push(...json.data.data);
+
+        lastPage = Number(json.data.last_page) || page;
+        page++;
+    }
+
+    return allProducts;
+}
 
 async function syncPrintifyProducts() {
     try {
-        const res = await fetch(`${OMNIA_API_BACKEND}/api/printify/products`);
-        const result = await res.json();
-        if (result.status === "success" && result.data && result.data.data) {
-            console.log("Productos sincronizados con Printify:", result.data.data);
-        }
+        const printifyProducts = await getPrintifyProducts();
+
+        console.log(
+            "Productos disponibles en Printify:",
+            printifyProducts.length
+        );
+
+        return printifyProducts;
     } catch (e) {
-        console.log("Modo standalone activado.");
+        console.log("No se pudo sincronizar Printify:", e.message);
+        return [];
     }
 }
 
@@ -568,13 +748,23 @@ async function sendOrderToPrintify(orderDetails) {
     try {
         const res = await fetch(`${OMNIA_API_BACKEND}/api/printify/orders`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify(orderDetails)
         });
+
         const data = await res.json();
-        console.log("Respuesta de automatización Printify:", data);
+
+        console.log(
+            "Respuesta de automatización Printify:",
+            data
+        );
+
+        return data;
     } catch (e) {
         console.error("Error enviando orden:", e);
+        return null;
     }
 }
 
@@ -582,53 +772,102 @@ async function syncEbayInventory() {
     try {
         const res = await fetch(`${OMNIA_API_BACKEND}/api/ebay/sync`);
         const data = await res.json();
-        console.log("Respuesta de sincronización con eBay:", data);
+
+        console.log(
+            "Respuesta de sincronización con eBay:",
+            data
+        );
+
+        return data;
     } catch (e) {
         console.error("Error sincronizando eBay:", e);
+        return null;
     }
 }
 
-// Inicialización de sincronización
-document.addEventListener('DOMContentLoaded', () => {
-    syncPrintifyProducts();
-    syncEbayInventory();
-});
-
-// FUNCIÓN PARA REEMPLAZAR / COMBINAR PRODUCTOS CON PRINTIFY EN TIEMPO REAL
 async function loadPrintifyCatalog() {
     try {
-        const res = await fetch("https://omnia-api.macisterodriguez16.workers.dev/api/printify/products");
-        const json = await res.json();
-        
-        if (json.status === "success" && json.data && json.data.data && json.data.data.length > 0) {
-            console.log("¡Productos de Printify encontrados!", json.data.data);
-            
-            // Convertimos el formato de Printify al formato interno de OMNIA
-            const printifyItems = json.data.data.map((item, index) => {
-                const firstImage = (item.images && item.images.length > 0) ? item.images[0].src : 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500';
-                const basePriceUSD = (item.variants && item.variants.length > 0) ? (item.variants[0].price / 100) : 99.99;
-                
+        const printifyProducts = await syncPrintifyProducts();
+
+        if (!printifyProducts.length) {
+            return;
+        }
+
+        const existingPrintifyKeys = new Set(
+            products
+                .filter(p => p.key && p.key.startsWith("printify_"))
+                .map(p => p.key)
+        );
+
+        const printifyItems = printifyProducts
+            .filter(item => item && item.id)
+            .filter(item => !existingPrintifyKeys.has(`printify_${item.id}`))
+            .map(item => {
+                const firstImage =
+                    item.images &&
+                    item.images.length > 0 &&
+                    item.images[0].src
+                        ? item.images[0].src
+                        : "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500";
+
+                const enabledVariants = Array.isArray(item.variants)
+                    ? item.variants.filter(v => v.enabled !== false)
+                    : [];
+
+                const firstVariant =
+                    enabledVariants.length > 0
+                        ? enabledVariants[0]
+                        : item.variants && item.variants.length > 0
+                            ? item.variants[0]
+                            : null;
+
+                const basePriceUSD =
+                    firstVariant && Number.isFinite(Number(firstVariant.price))
+                        ? Number(firstVariant.price) / 100
+                        : 99.99;
+
+                const cleanDescription = item.description
+                    ? item.description
+                        .replace(/<[^>]*>?/gm, "")
+                        .replace(/\s+/g, " ")
+                        .trim()
+                    : "";
+
                 return {
-                    id: 100 + index,
+                    id: createPrintifyProductId(String(item.id)),
                     key: `printify_${item.id}`,
                     priceUSD: basePriceUSD,
-                    category: 'Moda',
+                    category: getPrintifyCategory(item),
                     image: firstImage,
-                    titleCustom: item.title,
-                    descCustom: item.description ? item.description.replace(/<[^>]*>?/gm, '').substring(0, 120) + '...' : ''
+                    titleCustom: item.title || "Producto OMNIA",
+                    descCustom: cleanDescription
+                        ? cleanDescription.substring(0, 180)
+                        : "",
+                    printifyId: item.id,
+                    printifyShopId: item.shop_id || null,
+                    printifyVariants: enabledVariants
                 };
             });
 
-            // Agregamos o reemplazamos en el catálogo
+        if (printifyItems.length > 0) {
             products.unshift(...printifyItems);
             renderProducts(products);
         }
+
+        console.log(
+            "Catálogo OMNIA actualizado:",
+            printifyItems.length,
+            "productos nuevos."
+        );
     } catch (err) {
-        console.log("Sincronización Printify en segundo plano completa.");
+        console.log(
+            "Sincronización Printify no disponible:",
+            err.message
+        );
     }
 }
 
-// Ejecutar sincronización al iniciar
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     loadPrintifyCatalog();
+    syncEbayInventory();
 });

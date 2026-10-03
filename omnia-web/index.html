@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OMNIA - Mercado Global de Alta Costura y Arte</title>
+    <meta name="theme-color" content="#080809">
+    <title>OMNIA — Arte · Moda · Estilo · Vida</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- SDK de PayPal Express -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR -->
     <div class="top-bar">
         <div class="top-bar-content">
-            <span id="culturalNotice">🇺🇸 EE. UU.: Servicio con garantía de devolución estándar de 30 días y entregas exprés prioritarias.</span>
+            <span id="culturalNotice">OMNIA GLOBAL · ARTE · MODA · ESTILO · VIDA</span>
             <div class="top-controls">
                 <select id="langSelect" onchange="changeLang()">
                     <option value="es">🇪🇸 Español</option>
@@ -60,288 +58,739 @@
         </div>
     </div>
 
-    <!-- NAVEGACIÓN -->
     <header class="navbar">
         <div class="nav-container">
-            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-            <div class="brand-logo">OMNIA</div>
+            <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menú">☰</button>
+
+            <a href="#hero" class="brand-logo">
+                <span class="brand-mark">∞</span>
+                <span class="brand-name">OMNIA</span>
+            </a>
+
             <div class="search-box">
+                <span class="search-icon">⌕</span>
                 <input type="text" id="searchInput" placeholder="Buscar moda, arte, accesorios..." onkeyup="filterProducts()">
             </div>
+
             <div class="nav-actions">
-                <button class="cart-btn" onclick="toggleCart()">Carrito <span id="cartCount" class="badge">0</span></button>
+                <button class="nav-icon-btn" type="button" aria-label="Favoritos">♡</button>
+                <button class="nav-icon-btn" type="button" aria-label="Notificaciones">◌</button>
+                <button class="cart-btn" onclick="toggleCart()">
+                    Carrito <span id="cartCount" class="badge">0</span>
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3>Menú OMNIA</h3>
+            <div>
+                <span class="sidebar-kicker">OMNIA</span>
+                <h3>Espacio Privado</h3>
+            </div>
             <button class="close-sidebar" onclick="toggleSidebar()">×</button>
         </div>
+
         <ul class="sidebar-links">
             <li><a href="#hero" onclick="toggleSidebar()">Inicio</a></li>
-            <li><a href="#catalog" onclick="toggleSidebar()">Catálogo Exclusivo</a></li>
-            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openContactModal();">Contacto & Soporte</a></li>
+            <li><a href="#catalog" onclick="toggleSidebar()">Descubrir</a></li>
+            <li><a href="#catalog" onclick="toggleSidebar(); filterCategory('Arte')">Arte impreso</a></li>
+            <li><a href="#catalog" onclick="toggleSidebar(); filterCategory('Moda')">Moda</a></li>
+            <li><a href="#catalog" onclick="toggleSidebar(); filterCategory('Calzado')">Calzado</a></li>
+            <li><a href="#catalog" onclick="toggleSidebar(); filterCategory('Accesorios')">Accesorios</a></li>
+
             <hr>
-            <li class="sidebar-title">Políticas Legales</li>
+
+            <li class="sidebar-title">Servicio OMNIA</li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openContactModal();">Contacto y Soporte</a></li>
             <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('shipping');">Envíos y Logística</a></li>
             <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('returns');">Devoluciones y Garantía</a></li>
-            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('privacy');">Privacidad & Datos</a></li>
+            <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('privacy');">Privacidad y Datos</a></li>
             <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('terms');">Términos del Servicio</a></li>
             <li><a href="javascript:void(0)" onclick="toggleSidebar(); openPolicy('legal');">Aviso Legal</a></li>
         </ul>
+
+        <div class="sidebar-footer">
+            <span>OMNIA GLOBAL</span>
+            <small>Arte · Moda · Estilo · Vida</small>
+        </div>
     </div>
+
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <!-- HERO -->
     <section class="hero" id="hero">
         <canvas id="heroCanvas"></canvas>
+
         <div class="hero-content">
-            <span class="hero-subtitle">ALTA COSTURA & TENDENCIA 2026</span>
-            <h1>Elegancia Vibrante & Diseño Exclusivo</h1>
-            <p>Descubre colecciones limitadas creadas por los diseñadores más influyentes del mundo.</p>
-            <a href="#catalog" class="hero-btn">Ver Colección Exclusiva</a>
+            <span class="hero-subtitle">ARTE · MODA · ESTILO · VIDA</span>
+            <h1>Todo lo que te inspira,<br>en un solo lugar.</h1>
+            <p>Una nueva experiencia global donde el arte, la moda y el diseño se encuentran.</p>
+
+            <div class="hero-actions">
+                <a href="#catalog" class="hero-btn">Explorar colección</a>
+                <a href="#catalog" class="hero-secondary-btn">Descubrir OMNIA</a>
+            </div>
+        </div>
+
+        <div class="hero-signature">
+            <span>OMNIA</span>
+            <small>EST. 2026</small>
+        </div>
+
+        <div class="hero-scroll">
+            <span>SCROLL TO DISCOVER</span>
+            <i></i>
         </div>
     </section>
 
-    <!-- CATÁLOGO -->
+    <section class="brand-intro">
+        <div class="brand-intro-line"></div>
+        <div>
+            <span class="section-eyebrow">THE OMNIA EXPERIENCE</span>
+            <h2>Una plataforma.<br>Infinitas posibilidades.</h2>
+        </div>
+        <p>
+            Explora piezas seleccionadas, colecciones exclusivas y nuevas formas
+            de expresar tu estilo desde una experiencia creada para ti.
+        </p>
+    </section>
+
     <main class="container" id="catalog">
+
+        <div class="catalog-heading">
+            <div>
+                <span class="section-eyebrow">CURATED COLLECTION</span>
+                <h2>Descubre la colección</h2>
+            </div>
+
+            <div class="catalog-meta">
+                <span>OMNIA / 2026</span>
+            </div>
+        </div>
+
         <div class="filter-bar">
             <button class="cat-btn active" onclick="filterCategory('Todos')">Todos</button>
             <button class="cat-btn" onclick="filterCategory('Moda')">Moda</button>
             <button class="cat-btn" onclick="filterCategory('Calzado')">Calzado</button>
             <button class="cat-btn" onclick="filterCategory('Accesorios')">Accesorios</button>
-            <button class="cat-btn" onclick="filterCategory('Arte')">Arte</button>
+            <button class="cat-btn" onclick="filterCategory('Arte')">Arte impreso</button>
         </div>
+
         <div class="grid" id="productGrid"></div>
     </main>
 
-    <!-- NEWSLETTER -->
+    <section class="editorial-banner">
+        <div class="editorial-copy">
+            <span class="section-eyebrow">BEYOND ORDINARY</span>
+            <h2>Diseño que permanece.</h2>
+            <p>Descubre piezas concebidas para formar parte de tu historia.</p>
+        </div>
+
+        <div class="editorial-mark">∞</div>
+    </section>
+
     <section class="newsletter-section">
         <div class="newsletter-card">
-            <span class="vip-badge">MEMBRESÍA VIP</span>
-            <h2>Únete al Club Privado OMNIA</h2>
-            <p>Obtén un 15% de descuento inmediato y acceso prioritario a lanzamientos y colecciones exclusivas.</p>
+            <span class="vip-badge">OMNIA PRIVATE CLUB</span>
+            <h2>Entra en el círculo privado.</h2>
+            <p>
+                Recibe novedades, colecciones especiales y acceso anticipado
+                a nuevas piezas de OMNIA.
+            </p>
+
             <form class="newsletter-form" onsubmit="subscribeEmail(event)">
-                <input type="email" placeholder="Ingresa tu correo electrónico personal..." required>
-                <button type="submit">Obtener Acceso</button>
+                <input type="email" placeholder="Tu correo electrónico" required>
+                <button type="submit">Solicitar acceso</button>
             </form>
         </div>
     </section>
 
-    <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-container">
-            <div class="footer-col">
-                <div class="footer-logo">OMNIA</div>
-                <p>Ecosistema global de alta moda, piezas únicas y obras de arte seleccionadas con los más altos estándares de calidad.</p>
+
+            <div class="footer-col footer-brand-col">
+                <div class="footer-logo">
+                    <span>∞</span> OMNIA
+                </div>
+                <p>
+                    Arte, moda, diseño y estilo reunidos en una experiencia
+                    global creada para descubrir algo extraordinario.
+                </p>
             </div>
+
             <div class="footer-col">
-                <h4>Contacto Corporativo</h4>
-                <p>📧 Email: <span id="footerEmail">soporte@omnia.com</span></p>
-                <p>📞 Teléfono: <span id="footerPhone">+1 (800) 555-OMNIA</span></p>
-            </div>
-            <div class="footer-col">
-                <h4>Información Legal</h4>
+                <h4>Explorar</h4>
                 <ul>
-                    <li><a href="javascript:void(0)" onclick="openPolicy('shipping')">Envíos Internacionales</a></li>
-                    <li><a href="javascript:void(0)" onclick="openPolicy('returns')">Política de Reembolsos</a></li>
-                    <li><a href="javascript:void(0)" onclick="openPolicy('privacy')">Protección de Datos</a></li>
-                    <li><a href="javascript:void(0)" onclick="openPolicy('terms')">Términos del Servicio</a></li>
+                    <li><a href="#hero">Inicio</a></li>
+                    <li><a href="#catalog">Colecciones</a></li>
+                    <li><a href="#catalog" onclick="filterCategory('Arte')">Arte impreso</a></li>
+                    <li><a href="#catalog" onclick="filterCategory('Moda')">Moda</a></li>
+                    <li><a href="#catalog" onclick="filterCategory('Calzado')">Calzado</a></li>
                 </ul>
             </div>
+
             <div class="footer-col">
-                <h4>Métodos de Pago Aceptados</h4>
-                <div class="official-payment-logos">
-                    <div class="card-badge visa-official">VISA</div>
-                    <div class="card-badge mastercard-official"><span class="mc-red"></span><span class="mc-yellow"></span></div>
-                    <div class="card-badge discover-official">DISCOVER</div>
-                    <div class="card-badge amex-official">AMEX</div>
-                    <div class="card-badge diners-official"><span></span></div>
-                    <div class="card-badge paypal-official"><span class="pp-b1">Pay</span><span class="pp-b2">Pal</span></div>
+                <h4>Atención</h4>
+                <p>📧 <span id="footerEmail">soporte@omnia.com</span></p>
+                <p>📞 <span id="footerPhone">+1 (800) 555-OMNIA</span></p>
+                <p class="footer-secure">🔒 Compra segura</p>
+            </div>
+
+            <div class="footer-col">
+                <h4>Información</h4>
+                <ul>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('shipping')">Envíos internacionales</a></li>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('returns')">Reembolsos</a></li>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('privacy')">Protección de datos</a></li>
+                    <li><a href="javascript:void(0)" onclick="openPolicy('terms')">Términos del servicio</a></li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="footer-payment-row">
+            <span>PAGOS PROCESADOS DE FORMA SEGURA</span>
+            <div class="official-payment-logos">
+                <div class="card-badge visa-official">VISA</div>
+                <div class="card-badge mastercard-official">
+                    <span class="mc-red"></span>
+                    <span class="mc-yellow"></span>
+                </div>
+                <div class="card-badge amex-official">AMEX</div>
+                <div class="card-badge paypal-official">
+                    <span class="pp-b1">Pay</span><span class="pp-b2">Pal</span>
                 </div>
             </div>
         </div>
+
         <div class="footer-bottom">
-            <p>&copy; 2026 OMNIA Global Fashion & Art Marketplace Inc. Todos los derechos reservados.</p>
+            <p>&copy; 2026 OMNIA Global. Todos los derechos reservados.</p>
+            <span>ARTE · MODA · ESTILO · VIDA</span>
         </div>
     </footer>
 
-    <!-- MODAL PRODUCTO -->
     <div class="modal" id="productModal">
         <div class="modal-content product-detail">
             <button class="close-btn" onclick="closeProductModal()">×</button>
+
             <div class="modal-grid">
                 <div class="modal-img-container">
-                    <img id="modalProductImg" src="" alt="Producto">
+                    <img id="modalProductImg" src="" alt="Producto OMNIA">
                 </div>
+
                 <div class="modal-info">
                     <span id="modalProductCat" class="card-cat"></span>
                     <h2 id="modalProductTitle"></h2>
                     <p id="modalProductDesc"></p>
+
                     <div id="modalProductPrice" class="modal-price"></div>
+
                     <div class="cultural-tip" id="modalCulturalTip"></div>
-                    
+
                     <div class="qty-selector">
-                        <label>Cantidad:</label>
+                        <label>Cantidad</label>
                         <div class="qty-controls">
-                            <button type="button" onclick="decrementQty()">-</button>
+                            <button type="button" onclick="decrementQty()">−</button>
                             <input type="number" id="productQty" value="1" min="1" max="100" readonly>
                             <button type="button" onclick="incrementQty()">+</button>
                         </div>
                     </div>
 
-                    <button class="add-btn-large dark-add-btn" onclick="addModalToCart()">Añadir al Carrito</button>
-                    
+                    <button class="add-btn-large dark-add-btn" onclick="addModalToCart()">
+                        Añadir al carrito
+                    </button>
+
                     <div class="express-checkout-box">
-                        <p class="express-title">Pago Exprés Seguro:</p>
+                        <p class="express-title">Checkout seguro</p>
+                        <div class="secure-payment-note">
+                            <span>🔒</span>
+                            <div>
+                                <strong>Pago protegido</strong>
+                                <small>Tu información financiera se procesa mediante proveedores de pago seguros.</small>
+                            </div>
+                        </div>
                         <div id="paypalModalButtonContainer"></div>
                     </div>
 
                     <div class="other-payments-link">
-                        <a href="javascript:void(0)" onclick="openOtherPaymentsModal()">💳 Ver Otras Opciones de Pago (Tarjetas, Depósitos y Cripto)</a>
+                        <a href="javascript:void(0)" onclick="openOtherPaymentsModal()">
+                            💳 Ver métodos de pago
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL CARRITO -->
     <div class="modal" id="cartModal">
-        <div class="modal-content">
+        <div class="modal-content cart-modal-content">
             <button class="close-btn" onclick="toggleCart()">×</button>
-            <h2>Tu Carrito de Compras</h2>
+
+            <div class="modal-heading">
+                <span class="section-eyebrow">OMNIA BAG</span>
+                <h2>Tu selección</h2>
+            </div>
+
             <div id="cartItems"></div>
-            
+
             <div class="cart-summary">
-                <h3>Total: <span id="cartTotal">$0.00</span></h3>
-                
+                <div class="cart-total-row">
+                    <span>Total</span>
+                    <strong id="cartTotal">$0.00</strong>
+                </div>
+
                 <div class="checkout-methods">
-                    <div id="paypalCartButtonContainer"></div>
-                    
+
                     <button class="add-btn-large alt-payment-btn" onclick="openOtherPaymentsModal()">
-                        💳 Ver Otras Opciones de Pago (Tarjetas, Depósitos y Cripto)
+                        Ver otras opciones de pago
                     </button>
+                </div>
+
+                <div class="checkout-trust">
+                    <span>Pago seguro</span>
+                    <span>Compra global</span>
+                    <span>✓ Protección de datos</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL MODERNO Y PROFESIONAL DE OTRAS OPCIONES DE PAGO -->
-    <div class="modal" id="otherPaymentsModal">
-        <div class="modal-content modern-payment-modal">
-            <button class="close-btn dark-close" onclick="closeOtherPaymentsModal()">×</button>
-            
-            <div class="payment-modal-header">
-                <span class="secure-badge">🔒 PASARELA SEGURA SSL 256-BIT</span>
-                <h2>Checkout Global OMNIA</h2>
-                <p>Selecciona tu método preferido de pago de alta seguridad:</p>
-            </div>
+<div class="modal" id="otherPaymentsModal">
+    <div class="modal-content modern-payment-modal">
+        <button class="close-btn dark-close" onclick="closeOtherPaymentsModal()">×</button>
 
-            <div class="payment-accordion">
-                <!-- Opción 1: Tarjetas de Crédito / Débito -->
-                <div class="accordion-item">
-                    <button class="accordion-header" onclick="toggleAccordion('cardOption')">
-                        <div class="acc-title">
-                            <span class="acc-icon">💳</span>
-                            <span>Tarjeta de Crédito o Débito</span>
-                        </div>
-                        <span class="acc-arrow">▼</span>
-                    </button>
-                    <div id="cardOption" class="accordion-content">
-                        <p class="acc-desc">Procesamiento seguro directo en tu moneda local.</p>
-                        <form onsubmit="processCardPayment(event)">
-                            <div class="form-group">
-                                <input type="text" placeholder="Nombre completo del titular" required class="checkout-input-modern">
-                            </div>
-                            <div class="form-group">
-                                <input type="text" placeholder="Número de Tarjeta (16 dígitos)" required class="checkout-input-modern">
-                            </div>
-                            <div style="display:flex; gap:10px;">
-                                <input type="text" placeholder="MM/AA" required class="checkout-input-modern" style="flex:1;">
-                                <input type="text" placeholder="CVC / CVV" required class="checkout-input-modern" style="flex:1;">
-                            </div>
-                            <button type="submit" class="btn-pay-action">Procesar Pago con Tarjeta</button>
-                        </form>
-                    </div>
-                </div>
+        <div class="payment-modal-header">
+            <span class="secure-badge">CHECKOUT SEGURO</span>
+            <h2>Checkout Global OMNIA</h2>
+            <p>Selecciona una forma de pago disponible para tu país y proveedor.</p>
+        </div>
 
-                <!-- Opción 2: Transferencia / Depósito Bancario Citibank -->
-                <div class="accordion-item">
-                    <button class="accordion-header" onclick="toggleAccordion('bankOption')">
-                        <div class="acc-title">
-                            <span class="acc-icon">🏦</span>
-                            <span>Transferencia o Depósito Bancario (EE. UU. / Int.)</span>
-                        </div>
-                        <span class="acc-arrow">▼</span>
-                    </button>
-                    <div id="bankOption" class="accordion-content">
-                        <p class="acc-desc">Transfiere directamente a nuestra cuenta bancaria en EE. UU.:</p>
-                        <div class="modern-bank-card">
-                            <div class="bank-row"><span>Beneficiario:</span> <strong>Maciste Rodriguez</strong></div>
-                            <div class="bank-row"><span>Banco:</span> <strong>Citibank (USA)</strong></div>
-                            <div class="bank-row"><span>Tipo de Cuenta:</span> <strong>CHECKING (Corriente)</strong></div>
-                            <div class="bank-row"><span>Número de Cuenta:</span> <strong class="highlight-code">70580400002335298</strong></div>
-                            <div class="bank-row"><span>Ruta ABA:</span> <strong>031100209</strong></div>
-                            <div class="bank-row"><span>Código SWIFT:</span> <strong>CITIUS33</strong></div>
-                            <div class="bank-row"><span>Dirección del Banco:</span> <small>111 Wall Street, New York, NY 10043, USA</small></div>
-                        </div>
-                        <button class="btn-pay-action" onclick="confirmBankTransfer()">Notificar Transferencia / Depósito</button>
-                    </div>
-                </div>
-
-                <!-- Opción 3: Criptomonedas (Binance Pay / USDT) -->
-                <div class="accordion-item">
-                    <button class="accordion-header" onclick="toggleAccordion('cryptoOption')">
-                        <div class="acc-title">
-                            <span class="acc-icon">🟡</span>
-                            <span>Criptomonedas (USDT / Binance Pay)</span>
-                        </div>
-                        <span class="acc-arrow">▼</span>
-                    </button>
-                    <div id="cryptoOption" class="accordion-content">
-                        <p class="acc-desc">Pago inmediato sin comisiones adicionales vía USDT:</p>
-                        <div class="modern-crypto-card">
-                            <p class="crypto-label">Billetera USDT (Red TRC20 / BEP20):</p>
-                            <code class="crypto-code">TYs9X4k2mQ8pL3nB1vC7wZ5aR6tE8uY0iM</code>
-                        </div>
-                        <button class="btn-pay-action crypto-action" onclick="confirmCryptoPayment()">Confirmar Transferencia Cripto</button>
-                    </div>
-                </div>
+        <div class="payment-security-banner">
+            <span class="security-mark">SECURE</span>
+            <div>
+                <strong>Tus datos financieros permanecen protegidos</strong>
+                <small>OMNIA no almacena números completos de tarjetas, códigos CVV, contraseñas bancarias ni claves privadas.</small>
             </div>
         </div>
-    </div>
 
-    <!-- MODAL POLÍTICAS -->
+        <div class="payment-region-note">
+            <strong>Métodos de pago disponibles</strong>
+            <span>Las opciones pueden variar según tu país, moneda, proveedor de pago y disponibilidad del servicio.</span>
+        </div>
+
+        <div class="shipping-checkout-section">
+            <div class="shipping-section-header">
+                <span class="secure-badge">DESTINO DE ENVÍO</span>
+                <h3>¿Dónde deseas recibir tu pedido?</h3>
+                <p>Indica la dirección donde quieres que se realice la entrega.</p>
+            </div>
+
+            <div class="shipping-form-grid">
+                <div class="shipping-form-group shipping-full">
+                    <label for="shippingCountry">País / región</label>
+                    <select id="shippingCountry" name="shippingCountry" required>
+                        <option value="">Selecciona tu país o región</option>
+                        <option value="AF">Afganistán</option>
+                        <option value="AL">Albania</option>
+                        <option value="DE">Alemania</option>
+                        <option value="AD">Andorra</option>
+                        <option value="AO">Angola</option>
+                        <option value="AG">Antigua y Barbuda</option>
+                        <option value="SA">Arabia Saudita</option>
+                        <option value="DZ">Argelia</option>
+                        <option value="AR">Argentina</option>
+                        <option value="AM">Armenia</option>
+                        <option value="AU">Australia</option>
+                        <option value="AT">Austria</option>
+                        <option value="AZ">Azerbaiyán</option>
+                        <option value="BS">Bahamas</option>
+                        <option value="BH">Baréin</option>
+                        <option value="BD">Bangladés</option>
+                        <option value="BB">Barbados</option>
+                        <option value="BE">Bélgica</option>
+                        <option value="BZ">Belice</option>
+                        <option value="BJ">Benín</option>
+                        <option value="BY">Bielorrusia</option>
+                        <option value="BO">Bolivia</option>
+                        <option value="BA">Bosnia y Herzegovina</option>
+                        <option value="BW">Botsuana</option>
+                        <option value="BR">Brasil</option>
+                        <option value="BN">Brunéi</option>
+                        <option value="BG">Bulgaria</option>
+                        <option value="BF">Burkina Faso</option>
+                        <option value="BI">Burundi</option>
+                        <option value="BT">Bután</option>
+                        <option value="CV">Cabo Verde</option>
+                        <option value="KH">Camboya</option>
+                        <option value="CM">Camerún</option>
+                        <option value="CA">Canadá</option>
+                        <option value="QA">Catar</option>
+                        <option value="TD">Chad</option>
+                        <option value="CL">Chile</option>
+                        <option value="CN">China</option>
+                        <option value="CY">Chipre</option>
+                        <option value="CO">Colombia</option>
+                        <option value="KM">Comoras</option>
+                        <option value="CG">Congo</option>
+                        <option value="CD">Congo, República Democrática del</option>
+                        <option value="KR">Corea del Sur</option>
+                        <option value="CI">Costa de Marfil</option>
+                        <option value="CR">Costa Rica</option>
+                        <option value="HR">Croacia</option>
+                        <option value="CU">Cuba</option>
+                        <option value="DK">Dinamarca</option>
+                        <option value="DJ">Yibuti</option>
+                        <option value="DM">Dominica</option>
+                        <option value="EC">Ecuador</option>
+                        <option value="EG">Egipto</option>
+                        <option value="SV">El Salvador</option>
+                        <option value="AE">Emiratos Árabes Unidos</option>
+                        <option value="ER">Eritrea</option>
+                        <option value="SK">Eslovaquia</option>
+                        <option value="SI">Eslovenia</option>
+                        <option value="ES">España</option>
+                        <option value="US">Estados Unidos</option>
+                        <option value="EE">Estonia</option>
+                        <option value="SZ">Esuatini</option>
+                        <option value="ET">Etiopía</option>
+                        <option value="PH">Filipinas</option>
+                        <option value="FI">Finlandia</option>
+                        <option value="FJ">Fiyi</option>
+                        <option value="FR">Francia</option>
+                        <option value="GA">Gabón</option>
+                        <option value="GM">Gambia</option>
+                        <option value="GE">Georgia</option>
+                        <option value="GH">Ghana</option>
+                        <option value="GD">Granada</option>
+                        <option value="GR">Grecia</option>
+                        <option value="GT">Guatemala</option>
+                        <option value="GY">Guyana</option>
+                        <option value="HT">Haití</option>
+                        <option value="HN">Honduras</option>
+                        <option value="HK">Hong Kong</option>
+                        <option value="HU">Hungría</option>
+                        <option value="IN">India</option>
+                        <option value="ID">Indonesia</option>
+                        <option value="IQ">Irak</option>
+                        <option value="IE">Irlanda</option>
+                        <option value="IS">Islandia</option>
+                        <option value="IL">Israel</option>
+                        <option value="IT">Italia</option>
+                        <option value="JM">Jamaica</option>
+                        <option value="JP">Japón</option>
+                        <option value="JO">Jordania</option>
+                        <option value="KZ">Kazajistán</option>
+                        <option value="KE">Kenia</option>
+                        <option value="KG">Kirguistán</option>
+                        <option value="KW">Kuwait</option>
+                        <option value="LA">Laos</option>
+                        <option value="LV">Letonia</option>
+                        <option value="LB">Líbano</option>
+                        <option value="LS">Lesoto</option>
+                        <option value="LR">Liberia</option>
+                        <option value="LY">Libia</option>
+                        <option value="LI">Liechtenstein</option>
+                        <option value="LT">Lituania</option>
+                        <option value="LU">Luxemburgo</option>
+                        <option value="MO">Macao</option>
+                        <option value="MG">Madagascar</option>
+                        <option value="MY">Malasia</option>
+                        <option value="MW">Malaui</option>
+                        <option value="MV">Maldivas</option>
+                        <option value="ML">Malí</option>
+                        <option value="MT">Malta</option>
+                        <option value="MA">Marruecos</option>
+                        <option value="MU">Mauricio</option>
+                        <option value="MR">Mauritania</option>
+                        <option value="MX">México</option>
+                        <option value="MD">Moldavia</option>
+                        <option value="MC">Mónaco</option>
+                        <option value="MN">Mongolia</option>
+                        <option value="ME">Montenegro</option>
+                        <option value="MZ">Mozambique</option>
+                        <option value="MM">Myanmar</option>
+                        <option value="NA">Namibia</option>
+                        <option value="NP">Nepal</option>
+                        <option value="NI">Nicaragua</option>
+                        <option value="NE">Níger</option>
+                        <option value="NG">Nigeria</option>
+                        <option value="NO">Noruega</option>
+                        <option value="NZ">Nueva Zelanda</option>
+                        <option value="OM">Omán</option>
+                        <option value="NL">Países Bajos</option>
+                        <option value="PK">Pakistán</option>
+                        <option value="PA">Panamá</option>
+                        <option value="PG">Papúa Nueva Guinea</option>
+                        <option value="PY">Paraguay</option>
+                        <option value="PE">Perú</option>
+                        <option value="PL">Polonia</option>
+                        <option value="PT">Portugal</option>
+                        <option value="PR">Puerto Rico</option>
+                        <option value="GB">Reino Unido</option>
+                        <option value="DO">República Dominicana</option>
+                        <option value="CZ">República Checa</option>
+                        <option value="RO">Rumanía</option>
+                        <option value="RW">Ruanda</option>
+                        <option value="KN">San Cristóbal y Nieves</option>
+                        <option value="LC">Santa Lucía</option>
+                        <option value="SM">San Marino</option>
+                        <option value="VC">San Vicente y las Granadinas</option>
+                        <option value="SN">Senegal</option>
+                        <option value="RS">Serbia</option>
+                        <option value="SC">Seychelles</option>
+                        <option value="SL">Sierra Leona</option>
+                        <option value="SG">Singapur</option>
+                        <option value="SY">Siria</option>
+                        <option value="SO">Somalia</option>
+                        <option value="LK">Sri Lanka</option>
+                        <option value="ZA">Sudáfrica</option>
+                        <option value="SD">Sudán</option>
+                        <option value="SE">Suecia</option>
+                        <option value="CH">Suiza</option>
+                        <option value="TH">Tailandia</option>
+                        <option value="TW">Taiwán</option>
+                        <option value="TZ">Tanzania</option>
+                        <option value="TJ">Tayikistán</option>
+                        <option value="TL">Timor-Leste</option>
+                        <option value="TG">Togo</option>
+                        <option value="TO">Tonga</option>
+                        <option value="TT">Trinidad y Tobago</option>
+                        <option value="TN">Túnez</option>
+                        <option value="TR">Turquía</option>
+                        <option value="TM">Turkmenistán</option>
+                        <option value="UA">Ucrania</option>
+                        <option value="UG">Uganda</option>
+                        <option value="UY">Uruguay</option>
+                        <option value="UZ">Uzbekistán</option>
+                        <option value="VU">Vanuatu</option>
+                        <option value="VA">Vaticano</option>
+                        <option value="VE">Venezuela</option>
+                        <option value="VN">Vietnam</option>
+                        <option value="YE">Yemen</option>
+                        <option value="ZM">Zambia</option>
+                        <option value="ZW">Zimbabue</option>
+                    </select>
+                </div>
+
+                <div class="shipping-form-group shipping-full">
+                    <label for="shippingName">Nombre completo</label>
+                    <input type="text" id="shippingName" name="shippingName" autocomplete="name" placeholder="Nombre y apellido" required>
+                </div>
+
+                <div class="shipping-form-group shipping-full">
+                    <label for="shippingAddress">Dirección</label>
+                    <input type="text" id="shippingAddress" name="shippingAddress" autocomplete="street-address" placeholder="Calle, avenida y número" required>
+                </div>
+
+                <div class="shipping-form-group shipping-full">
+                    <label for="shippingAddress2">Apartamento / suite <span>Opcional</span></label>
+                    <input type="text" id="shippingAddress2" name="shippingAddress2" autocomplete="address-line2" placeholder="Apartamento, suite, edificio, etc.">
+                </div>
+
+                <div class="shipping-form-group">
+                    <label for="shippingCity">Ciudad</label>
+                    <input type="text" id="shippingCity" name="shippingCity" autocomplete="address-level2" placeholder="Ciudad" required>
+                </div>
+
+                <div class="shipping-form-group">
+                    <label for="shippingState">Estado / provincia</label>
+                    <input type="text" id="shippingState" name="shippingState" autocomplete="address-level1" placeholder="Estado o provincia" required>
+                </div>
+
+                <div class="shipping-form-group">
+                    <label for="shippingPostal">Código postal</label>
+                    <input type="text" id="shippingPostal" name="shippingPostal" autocomplete="postal-code" placeholder="Código postal" required>
+                </div>
+
+                <div class="shipping-form-group">
+                    <label for="shippingPhone">Teléfono</label>
+                    <input type="tel" id="shippingPhone" name="shippingPhone" autocomplete="tel" placeholder="+Código país y número" required>
+                </div>
+            </div>
+
+            <div class="shipping-security-note">
+                <span>SECURE</span>
+                <small>Tu dirección se utilizará para calcular y gestionar la entrega de tu pedido.</small>
+            </div>
+
+            <button type="button" class="shipping-continue-btn" onclick="continueToPayment()">
+                Continuar con el pago
+            </button>
+        </div>
+
+
+        <div class="payment-accordion">
+
+            <div class="accordion-item">
+                <button class="accordion-header" onclick="toggleAccordion('cardOption')">
+                    <div class="acc-title">
+                        <span class="acc-icon">CARD</span>
+                        <span>Tarjeta de crédito o débito</span>
+                    </div>
+                    <span class="acc-arrow">▼</span>
+                </button>
+
+                <div id="cardOption" class="accordion-content">
+                    <p class="acc-desc">La información de tarjeta deberá procesarse mediante una pasarela segura y tokenizada cuando el proveedor correspondiente esté conectado a OMNIA.</p>
+
+                    <form id="cardPaymentForm" onsubmit="processCardPayment(event)">
+                        <div class="card-form-group">
+                            <label for="cardNumber">Número de tarjeta</label>
+                            <input type="text" id="cardNumber" name="cardNumber" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="0000 0000 0000 0000" required>
+                        </div>
+
+                        <div class="card-form-group">
+                            <label for="cardName">Nombre del titular</label>
+                            <input type="text" id="cardName" name="cardName" autocomplete="cc-name" placeholder="Nombre como aparece en la tarjeta" required>
+                        </div>
+
+                        <div class="card-form-grid">
+                            <div class="card-form-group">
+                                <label for="cardExpiry">Vencimiento</label>
+                                <input type="text" id="cardExpiry" name="cardExpiry" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/AA" required>
+                            </div>
+                            <div class="card-form-group">
+                                <label for="cardCvv">CVV</label>
+                                <input type="password" id="cardCvv" name="cardCvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="•••" required>
+                            </div>
+                        </div>
+
+                        <div id="cardPaymentStatus" class="card-payment-status"></div>
+                        <div class="card-security-note">Tus datos de tarjeta no serán almacenados por OMNIA.</div>
+                        <button type="submit" class="btn-pay-action">Continuar con pago seguro</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <button class="accordion-header" onclick="toggleAccordion('walletOption')">
+                    <div class="acc-title"><span class="acc-icon">WALLET</span><span>Billeteras digitales</span></div>
+                    <span class="acc-arrow">▼</span>
+                </button>
+                <div id="walletOption" class="accordion-content">
+                    <p class="acc-desc">Podrán mostrarse billeteras digitales compatibles con el dispositivo, país y proveedor de pago seleccionado.</p>
+                    <div class="secure-provider-card">
+                        <div class="provider-icon">W</div>
+                        <div><strong>Opciones digitales</strong><span>La disponibilidad dependerá de la región y del proveedor conectado.</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <button class="accordion-header" onclick="toggleAccordion('paypalOption')">
+                    <div class="acc-title"><span class="acc-icon">PAY</span><span>PayPal</span></div>
+                    <span class="acc-arrow">▼</span>
+                </button>
+                <div id="paypalOption" class="accordion-content">
+                    <p class="acc-desc">PayPal podrá utilizarse cuando la cuenta y la configuración del proveedor estén disponibles para la transacción.</p>
+                    <div id="paypalOtherPaymentContainer"></div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <button class="accordion-header" onclick="toggleAccordion('bankOption')">
+                    <div class="acc-title"><span class="acc-icon">BANK</span><span>Transferencia bancaria</span></div>
+                    <span class="acc-arrow">▼</span>
+                </button>
+                <div id="bankOption" class="accordion-content">
+                    <p class="acc-desc">Las instrucciones bancarias se mostrarán únicamente de forma segura cuando exista una orden confirmada.</p>
+                    <div class="secure-provider-card">
+                        <div class="provider-icon">B</div>
+                        <div><strong>Transferencia protegida</strong><span>Las instrucciones dependerán del proveedor y del país de destino.</span></div>
+                    </div>
+                    <button type="button" class="btn-pay-action" onclick="confirmBankTransfer()">Solicitar instrucciones seguras</button>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <button class="accordion-header" onclick="toggleAccordion('regionalOption')">
+                    <div class="acc-title"><span class="acc-icon">REGION</span><span>Métodos disponibles en tu región</span></div>
+                    <span class="acc-arrow">▼</span>
+                </button>
+                <div id="regionalOption" class="accordion-content">
+                    <p class="acc-desc">OMNIA podrá mostrar métodos locales y regionales compatibles con tu país, moneda y proveedor de pagos.</p>
+                    <div class="secure-provider-card">
+                        <div class="provider-icon">R</div>
+                        <div><strong>Pago regional</strong><span>Las opciones se determinarán dinámicamente cuando se conecte el proveedor.</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <button class="accordion-header" onclick="toggleAccordion('cryptoOption')">
+                    <div class="acc-title"><span class="acc-icon">DIGITAL</span><span>Pago digital / Cripto</span></div>
+                    <span class="acc-arrow">▼</span>
+                </button>
+                <div id="cryptoOption" class="accordion-content">
+                    <p class="acc-desc">Los datos de pago se proporcionarán mediante el proveedor correspondiente y nunca como credenciales permanentes dentro de la APK.</p>
+                    <div class="secure-provider-card">
+                        <div class="provider-icon">D</div>
+                        <div><strong>Pago digital seguro</strong><span>La dirección de pago se generará para la transacción correspondiente.</span></div>
+                    </div>
+                    <button type="button" class="btn-pay-action crypto-action" onclick="confirmCryptoPayment()">Continuar con pago digital</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
     <div class="modal" id="policyModal">
         <div class="modal-content policy-modal-content">
             <button class="close-btn" onclick="closePolicyModal()">×</button>
+            <span class="section-eyebrow">OMNIA POLICY</span>
             <h2 id="policyTitle"></h2>
             <div id="policyBody" class="policy-body"></div>
         </div>
     </div>
 
-    <!-- MODAL CONTACTO -->
     <div class="modal" id="contactModal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeContactModal()">×</button>
-            <h2>Atención al Cliente OMNIA</h2>
-            <form onsubmit="sendContactForm(event)">
+
+            <span class="section-eyebrow">OMNIA SUPPORT</span>
+            <h2>Atención al cliente</h2>
+            <p class="contact-intro">Estamos aquí para ayudarte con tu experiencia en OMNIA.</p>
+
+            <form id="contactForm" onsubmit="sendContactForm(event)">
                 <div class="form-group">
-                    <label>Correo Electrónico:</label>
-                    <p><strong id="contactEmail">soporte@omnia.com</strong></p>
+                    <label for="contactName">Nombre completo</label>
+                    <input type="text" id="contactName" name="name" required placeholder="Tu nombre completo">
                 </div>
+
                 <div class="form-group">
-                    <label>Línea Telefónica Directa:</label>
-                    <p><strong id="contactPhone">+1 (800) 555-OMNIA</strong></p>
+                    <label for="contactEmailInput">Correo electrónico</label>
+                    <input type="email" id="contactEmailInput" name="email" required placeholder="tu@email.com">
                 </div>
+
                 <div class="form-group">
-                    <label>Tu Mensaje o Consulta:</label>
-                    <textarea rows="4" required placeholder="¿En qué podemos ayudarte hoy?"></textarea>
+                    <label for="contactReason">Motivo de contacto</label>
+                    <select id="contactReason" name="reason" required>
+                        <option value="">Selecciona una opción</option>
+                        <option value="Consulta general">Consulta general</option>
+                        <option value="Pedido">Consulta sobre un pedido</option>
+                        <option value="Envío">Envío y seguimiento</option>
+                        <option value="Devolución">Devolución o garantía</option>
+                        <option value="Pago">Pago y facturación</option>
+                        <option value="Soporte">Soporte técnico</option>
+                        <option value="Otro">Otro motivo</option>
+                    </select>
                 </div>
-                <button type="submit" class="add-btn-large dark-add-btn">Enviar Mensaje</button>
+
+                <div class="form-group">
+                    <label for="contactOrder">Número de pedido <span>Opcional</span></label>
+                    <input type="text" id="contactOrder" name="order" placeholder="Ej. OMNIA-000123">
+                </div>
+
+                <div class="form-group">
+                    <label for="contactMessage">Mensaje</label>
+                    <textarea id="contactMessage" name="message" rows="5" required placeholder="¿En qué podemos ayudarte?"></textarea>
+                </div>
+
+                <div id="contactStatus" class="contact-status"></div>
+
+                <button type="submit" class="add-btn-large dark-add-btn">
+                    Enviar mensaje
+                </button>
             </form>
         </div>
     </div>
