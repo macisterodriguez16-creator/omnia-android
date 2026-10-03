@@ -199,6 +199,121 @@ let cart = [];
 let currentLang = 'es';
 let currentCurrency = 'USD';
 let selectedProduct = null;
+let selectedProductImageIndex = 0;
+let selectedProductImages = [];
+let selectedProductOptions = {};
+let selectedProductVariant = null;
+
+
+function getPrintifyOptionDefinitions(product) {
+    if (!product || !Array.isArray(product.printifyOptions)) {
+        return [];
+    }
+
+    return product.printifyOptions
+        .filter(option => option && Array.isArray(option.values))
+        .map(option => ({
+            name: option.name || "Opción",
+            type: option.type || "text",
+            values: option.values
+                .filter(value => value && value.id !== undefined)
+                .map(value => ({
+                    id: String(value.id),
+                    title: value.title || String(value.id),
+                    colors: Array.isArray(value.colors) ? value.colors : []
+                }))
+        }))
+        .filter(option => option.values.length > 0);
+}
+
+function getPrintifyVariantOptionMap(product, variant) {
+    const definitions = getPrintifyOptionDefinitions(product);
+
+    if (!variant || !Array.isArray(variant.options)) {
+        return {};
+    }
+
+    const selected = {};
+
+    definitions.forEach(definition => {
+        const match = variant.options.find(optionId =>
+            definition.values.some(value => value.id === String(optionId))
+        );
+
+        if (match !== undefined) {
+            selected[definition.name] = String(match);
+        }
+    });
+
+    return selected;
+}
+
+function findMatchingPrintifyVariant(product, selections) {
+    if (!product || !Array.isArray(product.printifyVariants)) {
+        return null;
+    }
+
+    const definitions = getPrintifyOptionDefinitions(product);
+    const selectionKeys = definitions.map(definition => definition.name);
+
+    return product.printifyVariants.find(variant => {
+        if (!variant || !Array.isArray(variant.options)) {
+            return false;
+        }
+
+        const optionMap = getPrintifyVariantOptionMap(product, variant);
+
+        return selectionKeys.every(key => {
+            if (!selections[key]) {
+                return true;
+            }
+
+            return optionMap[key] === String(selections[key]);
+        });
+    }) || null;
+}
+
+function getAvailablePrintifyValues(product, optionName, selections) {
+    const definitions = getPrintifyOptionDefinitions(product);
+    const definition = definitions.find(option => option.name === optionName);
+
+    if (!definition || !Array.isArray(product.printifyVariants)) {
+        return [];
+    }
+
+    return definition.values.filter(value => {
+        const testSelections = {
+            ...selections,
+            [optionName]: String(value.id)
+        };
+
+        return product.printifyVariants.some(variant => {
+            if (!variant || variant.is_enabled !== true || variant.is_available === false) {
+                return false;
+            }
+
+            const optionMap = getPrintifyVariantOptionMap(product, variant);
+
+            return definitions.every(option => {
+                const selectedValue = testSelections[option.name];
+
+                if (!selectedValue) {
+                    return true;
+                }
+
+                return optionMap[option.name] === String(selectedValue);
+            });
+        });
+    });
+}
+
+function getPrintifyVariantPriceUSD(variant, fallbackPrice) {
+    if (variant && Number.isFinite(Number(variant.price))) {
+        return Number(variant.price) / 100;
+    }
+
+    return Number(fallbackPrice) || 0;
+}
 
 function applyContactConfig() {
     document.getElementById('contactEmail').textContent = siteConfig.contactEmail;
@@ -236,6 +351,264 @@ function renderProducts(items) {
     }).join('');
 }
 
+
+function getProductGalleryImages(product) {
+    if (!product) {
+        return [];
+    }
+
+    if (Array.isArray(product.images) && product.images.length > 0) {
+        return product.images
+            .filter(image => image && image.src)
+            .map(image => image.src);
+    }
+
+    if (product.image) {
+        return [product.image];
+    }
+
+    return [];
+}
+
+function renderProductGallery() {
+    const imageElement = document.getElementById("modalProductImg");
+    const thumbnails = document.getElementById("modalProductThumbnails");
+    const counter = document.getElementById("modalImageCounter");
+
+    if (!imageElement || !thumbnails || !counter) {
+        return;
+    }
+
+    if (!selectedProductImages.length) {
+        imageElement.removeAttribute("src");
+        thumbnails.innerHTML = "";
+        counter.textContent = "0 / 0";
+        return;
+    }
+
+    if (selectedProductImageIndex >= selectedProductImages.length) {
+        selectedProductImageIndex = 0;
+    }
+
+    if (selectedProductImageIndex < 0) {
+        selectedProductImageIndex = selectedProductImages.length - 1;
+    }
+
+    imageElement.src = selectedProductImages[selectedProductImageIndex];
+    counter.textContent = `${selectedProductImageIndex + 1} / ${selectedProductImages.length}`;
+
+    thumbnails.innerHTML = selectedProductImages.map((src, index) => `
+        <button
+            type="button"
+            class="modal-thumbnail ${index === selectedProductImageIndex ? "active" : ""}"
+            onclick="selectProductImage(${index})"
+            aria-label="Ver imagen ${index + 1}"
+        >
+            <img src="${src}" alt="Vista ${index + 1}">
+        </button>
+    `).join("");
+}
+
+function selectProductImage(index) {
+    if (!selectedProductImages.length) {
+        return;
+    }
+
+    if (index < 0 || index >= selectedProductImages.length) {
+        return;
+    }
+
+    selectedProductImageIndex = index;
+    renderProductGallery();
+}
+
+function previousProductImage() {
+    if (!selectedProductImages.length) {
+        return;
+    }
+
+    selectedProductImageIndex--;
+
+    if (selectedProductImageIndex < 0) {
+        selectedProductImageIndex = selectedProductImages.length - 1;
+    }
+
+    renderProductGallery();
+}
+
+function nextProductImage() {
+    if (!selectedProductImages.length) {
+        return;
+    }
+
+    selectedProductImageIndex++;
+
+    if (selectedProductImageIndex >= selectedProductImages.length) {
+        selectedProductImageIndex = 0;
+    }
+
+    renderProductGallery();
+}
+
+function zoomProductImage() {
+    const zoomModal = document.getElementById("imageZoomModal");
+    const zoomImage = document.getElementById("zoomedProductImg");
+    const mainImage = document.getElementById("modalProductImg");
+
+    if (!zoomModal || !zoomImage || !mainImage || !mainImage.src) {
+        return;
+    }
+
+    zoomImage.src = mainImage.src;
+    zoomModal.style.display = "flex";
+}
+
+function closeImageZoom() {
+    const zoomModal = document.getElementById("imageZoomModal");
+
+    if (zoomModal) {
+        zoomModal.style.display = "none";
+    }
+}
+
+function renderProductOptions() {
+    const container = document.getElementById("modalProductOptions");
+
+    if (!container || !selectedProduct) {
+        return;
+    }
+
+    const definitions = getPrintifyOptionDefinitions(selectedProduct);
+
+    if (!definitions.length) {
+        container.innerHTML = "";
+        selectedProductVariant = null;
+        return;
+    }
+
+    container.innerHTML = definitions.map(definition => {
+        const availableValues = getAvailablePrintifyValues(
+            selectedProduct,
+            definition.name,
+            selectedProductOptions
+        );
+
+        const selectedValue = selectedProductOptions[definition.name] || "";
+
+        const valuesHtml = availableValues.map(value => {
+            const isSelected = selectedValue === String(value.id);
+
+            if (definition.type === "color" || value.colors.length > 0) {
+                const color = value.colors[0] || "#777";
+
+                return `
+                    <button
+                        type="button"
+                        class="variant-color ${isSelected ? "selected" : ""}"
+                        style="--variant-color: ${color}"
+                        onclick="selectProductOption('${definition.name.replace(/'/g, "\\'")}', '${String(value.id).replace(/'/g, "\\'")}')"
+                        title="${value.title}"
+                        aria-label="${value.title}"
+                    >
+                        <span></span>
+                    </button>
+                `;
+            }
+
+            return `
+                <button
+                    type="button"
+                    class="variant-value ${isSelected ? "selected" : ""}"
+                    onclick="selectProductOption('${definition.name.replace(/'/g, "\\'")}', '${String(value.id).replace(/'/g, "\\'")}')"
+                >
+                    ${value.title}
+                </button>
+            `;
+        }).join("");
+
+        return `
+            <div class="variant-group">
+                <div class="variant-label">${definition.name}</div>
+                <div class="variant-values">
+                    ${valuesHtml}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function selectProductOption(optionName, valueId) {
+    if (!selectedProduct) {
+        return;
+    }
+
+    selectedProductOptions[optionName] = String(valueId);
+
+    const definitions = getPrintifyOptionDefinitions(selectedProduct);
+
+    const matchingVariant = findMatchingPrintifyVariant(
+        selectedProduct,
+        selectedProductOptions
+    );
+
+    selectedProductVariant = matchingVariant;
+
+    if (matchingVariant) {
+        const variantOptions = getPrintifyVariantOptionMap(
+            selectedProduct,
+            matchingVariant
+        );
+
+        definitions.forEach(definition => {
+            if (variantOptions[definition.name]) {
+                selectedProductOptions[definition.name] =
+                    variantOptions[definition.name];
+            }
+        });
+    }
+
+    renderProductOptions();
+    updateSelectedProductVariant();
+}
+
+function updateSelectedProductVariant() {
+    const priceElement = document.getElementById("modalProductPrice");
+    const availabilityElement = document.getElementById("modalProductAvailability");
+
+    if (!selectedProduct || !priceElement || !availabilityElement) {
+        return;
+    }
+
+    const variantPrice = getPrintifyVariantPriceUSD(
+        selectedProductVariant,
+        selectedProduct.priceUSD
+    );
+
+    const price = (variantPrice * rates[currentCurrency]).toLocaleString("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    priceElement.textContent = `${symbols[currentCurrency]}${price}`;
+
+    if (!selectedProductVariant) {
+        availabilityElement.textContent = "";
+        return;
+    }
+
+    if (
+        selectedProductVariant.is_enabled !== true ||
+        selectedProductVariant.is_available === false
+    ) {
+        availabilityElement.textContent = "No disponible";
+        availabilityElement.className = "product-availability unavailable";
+        return;
+    }
+
+    availabilityElement.textContent = "Disponible";
+    availabilityElement.className = "product-availability available";
+}
+
 function updateStaticTranslations() {
     const langData = i18n[currentLang] || i18n['es'];
     document.getElementById('searchInput').placeholder = langData.searchPlaceholder;
@@ -268,21 +641,62 @@ function changeCurrency() {
 
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
+
+    if (!selectedProduct) {
+        return;
+    }
+
     const langData = i18n[currentLang] || i18n['es'];
-    const prodLang = langData[selectedProduct.key] || i18n['es'][selectedProduct.key];
+    const prodLang = langData[selectedProduct.key] || i18n['es'][selectedProduct.key] || {};
     const productName = selectedProduct.titleCustom || prodLang.name || selectedProduct.key;
     const productDescription = selectedProduct.descCustom || prodLang.desc || '';
-    const price = (selectedProduct.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    document.getElementById('modalProductImg').src = selectedProduct.image;
+    selectedProductImageIndex = 0;
+    selectedProductImages = getProductGalleryImages(selectedProduct);
+    selectedProductOptions = {};
+    selectedProductVariant = null;
+
     document.getElementById('modalProductCat').textContent = selectedProduct.category;
     document.getElementById('modalProductTitle').textContent = productName;
     document.getElementById('modalProductDesc').textContent = productDescription;
-    document.getElementById('modalProductPrice').textContent = `${symbols[currentCurrency]}${price}`;
-    document.getElementById('modalCulturalTip').innerHTML = countryTraditions[currentCurrency] || countryTraditions['USD'];
+
+    renderProductGallery();
+
+    const optionDefinitions = getPrintifyOptionDefinitions(selectedProduct);
+
+    if (optionDefinitions.length && Array.isArray(selectedProduct.printifyVariants)) {
+        const defaultVariant =
+            selectedProduct.printifyVariants.find(variant =>
+                variant &&
+                variant.is_enabled === true &&
+                variant.is_available !== false &&
+                variant.is_default === true
+            ) ||
+            selectedProduct.printifyVariants.find(variant =>
+                variant &&
+                variant.is_enabled === true &&
+                variant.is_available !== false
+            );
+
+        if (defaultVariant) {
+            selectedProductVariant = defaultVariant;
+            selectedProductOptions = getPrintifyVariantOptionMap(
+                selectedProduct,
+                defaultVariant
+            );
+        }
+    }
+
+    renderProductOptions();
+    updateSelectedProductVariant();
+
+    document.getElementById('modalCulturalTip').innerHTML =
+        countryTraditions[currentCurrency] || countryTraditions['USD'];
+
     document.getElementById('productQty').value = 1;
 
     document.getElementById('productModal').style.display = 'flex';
+
     initPayPalButtons();
 }
 
@@ -303,15 +717,46 @@ function decrementQty() {
 }
 
 function addModalToCart() {
-    const qty = parseInt(document.getElementById('productQty').value) || 1;
-    for(let i = 0; i < qty; i++) {
-        cart.push(selectedProduct);
+    if (!selectedProduct) {
+        return;
     }
+
+    const qty = parseInt(
+        document.getElementById('productQty').value
+    ) || 1;
+
+    if (
+        selectedProduct.printifyVariants &&
+        selectedProduct.printifyVariants.length > 0 &&
+        !selectedProductVariant
+    ) {
+        alert('Selecciona una opción disponible antes de continuar.');
+        return;
+    }
+
+    for (let i = 0; i < qty; i++) {
+        const cartItem = {
+            ...selectedProduct,
+            selectedVariant: selectedProductVariant,
+            selectedOptions: {
+                ...selectedProductOptions
+            }
+        };
+
+        if (selectedProductVariant) {
+            cartItem.priceUSD = getPrintifyVariantPriceUSD(
+                selectedProductVariant,
+                selectedProduct.priceUSD
+            );
+        }
+
+        cart.push(cartItem);
+    }
+
     updateCartUI();
     closeProductModal();
 }
 
-/* PASARELA PAYPAL EXPRESS */
 function initPayPalButtons() {
     if (typeof paypal === 'undefined') return;
 
@@ -322,7 +767,16 @@ function initPayPalButtons() {
             style: { layout: 'horizontal', color: 'gold', shape: 'pill', label: 'pay' },
             createOrder: (data, actions) => {
                 const qty = parseInt(document.getElementById('productQty').value) || 1;
-                const convertedAmount = (selectedProduct.priceUSD * qty * rates[currentCurrency]).toFixed(2);
+                const selectedPriceUSD = getPrintifyVariantPriceUSD(
+                    selectedProductVariant,
+                    selectedProduct.priceUSD
+                );
+
+                const convertedAmount = (
+                    selectedPriceUSD *
+                    qty *
+                    rates[currentCurrency]
+                ).toFixed(2);
                 return actions.order.create({
                     purchase_units: [{
                         description: selectedProduct.key,
@@ -529,37 +983,119 @@ function filterProducts() {
 
 function addToCart(id) {
     const item = products.find(p => p.id === id);
-    cart.push(item);
+
+    if (!item) {
+        return;
+    }
+
+    const optionDefinitions = getPrintifyOptionDefinitions(item);
+
+    if (optionDefinitions.length && Array.isArray(item.printifyVariants)) {
+        openProductModal(id);
+        return;
+    }
+
+    const cartItem = {
+        ...item,
+        selectedVariant: null,
+        selectedOptions: {}
+    };
+
+    cart.push(cartItem);
     updateCartUI();
 }
 
 function updateCartUI() {
     document.getElementById("cartCount").textContent = cart.length;
+
     const cartItems = document.getElementById("cartItems");
     const langData = i18n[currentLang] || i18n["es"];
-    const totalUSD = cart.reduce((sum, p) => sum + p.priceUSD, 0);
-    const totalConverted = (totalUSD * rates[currentCurrency]).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const totalUSD = cart.reduce(
+        (sum, p) => sum + (Number(p.priceUSD) || 0),
+        0
+    );
+
+    const totalConverted = (
+        totalUSD * rates[currentCurrency]
+    ).toLocaleString("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 
     if (cart.length === 0) {
-        cartItems.innerHTML = `<div class="cart-empty">Tu carrito está vacío.</div>`;
+        cartItems.innerHTML =
+            `<div class="cart-empty">Tu carrito está vacío.</div>`;
     } else {
         cartItems.innerHTML = cart.map((p, index) => {
-            const prodLang = langData[p.key] || i18n["es"][p.key];
-        const productName = p.titleCustom || prodLang.name || p.key;
-            const price = (p.priceUSD * rates[currentCurrency]).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const prodLang =
+                langData[p.key] ||
+                i18n["es"][p.key] ||
+                {};
+
+            const productName =
+                p.titleCustom ||
+                prodLang.name ||
+                p.key;
+
+            const price = (
+                (Number(p.priceUSD) || 0) *
+                rates[currentCurrency]
+            ).toLocaleString("es-ES", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            const optionText = Object.entries(
+                p.selectedOptions || {}
+            )
+                .map(([name, valueId]) => {
+                    const definitions =
+                        getPrintifyOptionDefinitions(p);
+
+                    const definition =
+                        definitions.find(
+                            option => option.name === name
+                        );
+
+                    const value =
+                        definition &&
+                        definition.values.find(
+                            item => item.id === String(valueId)
+                        );
+
+                    return value
+                        ? `${name}: ${value.title}`
+                        : "";
+                })
+                .filter(Boolean)
+                .join(" · ");
+
             return `
                 <div class="cart-item-row">
                     <div class="cart-item-info">
-                        <span class="cart-item-name">${prodLang.name}</span>
-                        <span class="cart-item-price">${symbols[currentCurrency]}${price}</span>
+                        <span class="cart-item-name">${productName}</span>
+                        ${optionText
+                            ? `<span class="cart-item-variant">${optionText}</span>`
+                            : ""}
+                        <span class="cart-item-price">
+                            ${symbols[currentCurrency]}${price}
+                        </span>
                     </div>
-                    <button type="button" class="cart-remove-btn" onclick="removeFromCart(${index})">Eliminar</button>
+                    <button
+                        type="button"
+                        class="cart-remove-btn"
+                        onclick="removeFromCart(${index})"
+                    >
+                        Eliminar
+                    </button>
                 </div>
             `;
         }).join("");
     }
 
-    document.getElementById("cartTotal").textContent = `${symbols[currentCurrency]}${totalConverted}`;
+    document.getElementById("cartTotal").textContent =
+        `${symbols[currentCurrency]}${totalConverted}`;
 }
 
 function removeFromCart(index) {
@@ -640,19 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const OMNIA_API_BACKEND = "https://omnia-api.macisterodriguez16.workers.dev";
 
 function getPrintifyCategory(item) {
-    const text = `${item.title || ""} ${item.description || ""}`.toLowerCase();
-
-    if (
-        text.includes("canvas") ||
-        text.includes("poster") ||
-        text.includes("print") ||
-        text.includes("wall art") ||
-        text.includes("art print") ||
-        text.includes("framed art") ||
-        text.includes("framed canvas")
-    ) {
-        return "Arte impreso";
-    }
+    const text = `${item.title || ""} ${item.description || ""} ${(item.tags || []).join(" ")} ${item.product_type || ""} ${item.category || ""}`.toLowerCase();
 
     if (
         text.includes("sneaker") ||
@@ -660,7 +1184,10 @@ function getPrintifyCategory(item) {
         text.includes("sandal") ||
         text.includes("clog") ||
         text.includes("boot") ||
-        text.includes("slide")
+        text.includes("slide") ||
+        text.includes("footwear") ||
+        text.includes("loafer") ||
+        text.includes("slipper")
     ) {
         return "Calzado";
     }
@@ -678,22 +1205,40 @@ function getPrintifyCategory(item) {
         text.includes("shorts") ||
         text.includes("leggings") ||
         text.includes("swimwear") ||
-        text.includes("apparel")
+        text.includes("apparel") ||
+        text.includes("clothing") ||
+        text.includes("coat") ||
+        text.includes("skirt") ||
+        text.includes("bra") ||
+        text.includes("tank") ||
+        text.includes("activewear")
     ) {
         return "Moda";
     }
 
+    if (
+        text.includes("canvas") ||
+        text.includes("poster") ||
+        text.includes("wall art") ||
+        text.includes("art print") ||
+        text.includes("framed art") ||
+        text.includes("framed canvas") ||
+        text.includes("giclée") ||
+        text.includes("giclee") ||
+        text.includes("fine art") ||
+        text.includes("print art")
+    ) {
+        return "Arte impreso";
+    }
+
     return "Accesorios";
 }
-
-function createPrintifyProductId(printifyId) {
+function generateNumericIdFromPrintifyId(printifyId) {
     let hash = 0;
-
     for (let i = 0; i < printifyId.length; i++) {
         hash = ((hash << 5) - hash) + printifyId.charCodeAt(i);
         hash |= 0;
     }
-
     return 100000 + Math.abs(hash);
 }
 
@@ -803,23 +1348,23 @@ async function loadPrintifyCatalog() {
             .filter(item => item && item.id)
             .filter(item => !existingPrintifyKeys.has(`printify_${item.id}`))
             .map(item => {
+                const printifyImages = Array.isArray(item.images)
+                    ? item.images.filter(img => img && img.src)
+                    : [];
+
                 const firstImage =
-                    item.images &&
-                    item.images.length > 0 &&
-                    item.images[0].src
-                        ? item.images[0].src
+                    printifyImages.length > 0
+                        ? printifyImages.find(img => img.is_default)?.src || printifyImages[0].src
                         : "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500";
 
                 const enabledVariants = Array.isArray(item.variants)
-                    ? item.variants.filter(v => v.enabled !== false)
+                    ? item.variants.filter(v => v && v.is_enabled === true && v.is_available !== false)
                     : [];
 
                 const firstVariant =
                     enabledVariants.length > 0
                         ? enabledVariants[0]
-                        : item.variants && item.variants.length > 0
-                            ? item.variants[0]
-                            : null;
+                        : null;
 
                 const basePriceUSD =
                     firstVariant && Number.isFinite(Number(firstVariant.price))
@@ -834,15 +1379,18 @@ async function loadPrintifyCatalog() {
                     : "";
 
                 return {
-                    id: createPrintifyProductId(String(item.id)),
+                    id: generateNumericIdFromPrintifyId(String(item.id)),
                     key: `printify_${item.id}`,
                     priceUSD: basePriceUSD,
                     category: getPrintifyCategory(item),
                     image: firstImage,
+                    images: printifyImages,
                     titleCustom: item.title || "Producto OMNIA",
                     descCustom: cleanDescription
-                        ? cleanDescription.substring(0, 180)
+                        ? cleanDescription
                         : "",
+                    printifyDescription: item.description || "",
+                    printifyOptions: Array.isArray(item.options) ? item.options : [],
                     printifyId: item.id,
                     printifyShopId: item.shop_id || null,
                     printifyVariants: enabledVariants

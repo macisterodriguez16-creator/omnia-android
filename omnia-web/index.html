@@ -270,59 +270,79 @@
     </footer>
 
     <div class="modal" id="productModal">
-        <div class="modal-content product-detail">
-            <button class="close-btn" onclick="closeProductModal()">×</button>
+    <div class="modal-content product-detail">
+        <button class="close-btn" onclick="closeProductModal()">×</button>
 
-            <div class="modal-grid">
+        <div class="modal-grid">
+            <div class="modal-gallery">
                 <div class="modal-img-container">
-                    <img id="modalProductImg" src="" alt="Producto OMNIA">
+                    <button type="button" class="gallery-nav gallery-prev" onclick="previousProductImage()">‹</button>
+                    <img id="modalProductImg" src="" alt="Producto OMNIA" onclick="zoomProductImage()">
+                    <button type="button" class="gallery-nav gallery-next" onclick="nextProductImage()">›</button>
+                    <div id="modalImageCounter" class="gallery-counter">1 / 1</div>
                 </div>
 
-                <div class="modal-info">
-                    <span id="modalProductCat" class="card-cat"></span>
-                    <h2 id="modalProductTitle"></h2>
-                    <p id="modalProductDesc"></p>
+                <div id="modalProductThumbnails" class="modal-thumbnails"></div>
+            </div>
 
-                    <div id="modalProductPrice" class="modal-price"></div>
+            <div class="modal-info">
+                <span id="modalProductCat" class="card-cat"></span>
+                <h2 id="modalProductTitle"></h2>
+                <p id="modalProductDesc"></p>
 
-                    <div class="cultural-tip" id="modalCulturalTip"></div>
+                <div id="modalProductOptions" class="product-options"></div>
 
-                    <div class="qty-selector">
-                        <label>Cantidad</label>
-                        <div class="qty-controls">
-                            <button type="button" onclick="decrementQty()">−</button>
-                            <input type="number" id="productQty" value="1" min="1" max="100" readonly>
-                            <button type="button" onclick="incrementQty()">+</button>
+                <div id="modalProductPrice" class="modal-price"></div>
+
+                <div id="modalProductAvailability" class="product-availability"></div>
+
+                <div class="cultural-tip" id="modalCulturalTip"></div>
+
+                <div class="qty-selector">
+                    <label>Cantidad</label>
+                    <div class="qty-controls">
+                        <button type="button" onclick="decrementQty()">−</button>
+                        <input type="number" id="productQty" value="1" min="1" max="100" readonly>
+                        <button type="button" onclick="incrementQty()">+</button>
+                    </div>
+                </div>
+
+                <button class="add-btn-large dark-add-btn" onclick="addModalToCart()">
+                    Añadir al carrito
+                </button>
+
+                <div class="express-checkout-box">
+                    <p class="express-title">Checkout seguro</p>
+
+                    <div class="secure-payment-note">
+                        <span>Pago protegido</span>
+                        <div>
+                            <strong>Compra segura</strong>
+                            <small>Tu información financiera se procesa mediante proveedores de pago seguros.</small>
                         </div>
                     </div>
 
-                    <button class="add-btn-large dark-add-btn" onclick="addModalToCart()">
-                        Añadir al carrito
-                    </button>
+                    <div id="paypalModalButtonContainer"></div>
+                </div>
 
-                    <div class="express-checkout-box">
-                        <p class="express-title">Checkout seguro</p>
-                        <div class="secure-payment-note">
-                            <span>🔒</span>
-                            <div>
-                                <strong>Pago protegido</strong>
-                                <small>Tu información financiera se procesa mediante proveedores de pago seguros.</small>
-                            </div>
-                        </div>
-                        <div id="paypalModalButtonContainer"></div>
-                    </div>
-
-                    <div class="other-payments-link">
-                        <a href="javascript:void(0)" onclick="openOtherPaymentsModal()">
-                            💳 Ver métodos de pago
-                        </a>
-                    </div>
+                <div class="other-payments-link">
+                    <a href="javascript:void(0)" onclick="openOtherPaymentsModal()">
+                        Ver métodos de pago
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="modal" id="cartModal">
+<div class="modal" id="imageZoomModal">
+    <div class="modal-content image-zoom-content">
+        <button class="close-btn" onclick="closeImageZoom()">×</button>
+        <img id="zoomedProductImg" src="" alt="Producto OMNIA ampliado">
+    </div>
+</div>
+
+<div class="modal" id="cartModal">
         <div class="modal-content cart-modal-content">
             <button class="close-btn" onclick="toggleCart()">×</button>
 
