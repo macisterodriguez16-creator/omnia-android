@@ -25,7 +25,7 @@ const channels = [
     { id: "bonanza", name: "Bonanza" }
 ];
 
-let adminSecret = sessionStorage.getItem("omnia_admin_secret") || "";
+let adminSecret = "";
 
 function getAdminHeaders(includeJson = false) {
     const headers = {};
@@ -88,7 +88,7 @@ async function adminFetch(url, options = {}) {
         clearAdminSecret();
 
         const retry = window.confirm(
-            "La credencial de administrador no es válida.\n\n¿Quieres introducir nuevamente el ADMIN_SECRET?"
+            `La petición ${url} devolvió HTTP ${response.status}.\n\n¿Quieres introducir nuevamente el ADMIN_SECRET?`
         );
 
         if (retry) {

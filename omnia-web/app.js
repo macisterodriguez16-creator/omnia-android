@@ -574,10 +574,19 @@ function toggleCart() {
 
 }
 
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-    document.getElementById('sidebarOverlay').classList.toggle('active');
-}
+window.toggleSidebar = function () {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (!sidebar || !overlay) {
+        console.error('OMNIA: no se encontró la barra lateral o su fondo.');
+        return;
+    }
+
+    const isOpen = sidebar.classList.toggle('open');
+    overlay.classList.toggle('active', isOpen);
+    document.body.classList.toggle('sidebar-is-open', isOpen);
+};
 
 function subscribeEmail(e) {
     e.preventDefault();

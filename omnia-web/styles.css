@@ -1557,3 +1557,203 @@ a {
         font-size: 18px;
     }
 }
+
+/* OMNIA — NUEVO ACABADO PREMIUM */
+:root {
+    --gold: #d4af62;
+    --gold-light: #f1d995;
+    --gold-soft: rgba(212, 175, 98, .12);
+    --gold-border: rgba(212, 175, 98, .32);
+    --bg-main: #080808;
+    --bg-panel: #101010;
+    --bg-card: #141414;
+    --bg-elevated: #1c1a16;
+    --white: #f7f3eb;
+}
+
+body {
+    background: #080808;
+    color: var(--white);
+}
+
+.top-bar {
+    background: #050505;
+    border-bottom-color: rgba(212, 175, 98, .2);
+}
+
+.navbar {
+    background: rgba(8, 8, 8, .96);
+    border-bottom: 1px solid rgba(212, 175, 98, .24);
+    backdrop-filter: blur(22px);
+}
+
+.brand-logo {
+    gap: 10px;
+}
+
+.brand-mark {
+    color: var(--gold-light);
+    text-shadow: 0 0 22px rgba(212, 175, 98, .22);
+}
+
+.brand-name {
+    color: var(--gold-light);
+    letter-spacing: .24em;
+    font-family: 'Cinzel', serif;
+}
+
+.hero {
+    min-height: min(720px, 82vh);
+    border-bottom: 1px solid var(--gold-border);
+    background:
+        radial-gradient(ellipse at 78% 45%, rgba(212,175,98,.16), transparent 34%),
+        radial-gradient(ellipse at 12% 85%, rgba(212,175,98,.055), transparent 35%),
+        linear-gradient(115deg, #070707 0%, #12110f 52%, #080808 100%);
+}
+
+#heroCanvas {
+    opacity: .38;
+}
+
+.hero-content {
+    padding-top: 100px;
+    padding-bottom: 100px;
+}
+
+.hero-subtitle {
+    color: var(--gold-light);
+    letter-spacing: .32em;
+    line-height: 1.9;
+}
+
+.hero-content h1 {
+    color: #f8f3e9;
+    font-family: 'Cinzel', serif;
+    font-weight: 400;
+    letter-spacing: -.025em;
+    line-height: 1.12;
+    text-wrap: balance;
+    text-shadow: 0 5px 35px rgba(0,0,0,.35);
+}
+
+.hero-content p {
+    color: #c0bbb1;
+    line-height: 1.95;
+}
+
+.hero-btn {
+    min-height: 52px;
+    padding: 0 30px;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0d995, #c5a052);
+    color: #11100c;
+    border: 1px solid #e6c979;
+    letter-spacing: .15em;
+    box-shadow: 0 8px 28px rgba(212,175,98,.12);
+}
+
+.hero-btn:hover {
+    background: #fff0bd;
+    color: #080808;
+    box-shadow: 0 12px 35px rgba(212,175,98,.2);
+}
+
+.container {
+    padding-top: 68px;
+    padding-bottom: 80px;
+}
+
+button,
+.btn,
+input[type="submit"] {
+    transition: all .25s ease;
+}
+
+:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 4px;
+}
+
+::selection {
+    background: #d4af62;
+    color: #080808;
+}
+
+@media (max-width: 768px) {
+    .hero {
+        min-height: 570px;
+    }
+
+    .hero-content {
+        padding: 76px 7%;
+    }
+
+    .hero-content h1 {
+        font-size: clamp(38px, 10vw, 58px);
+    }
+
+    .container {
+        padding: 46px 18px 58px;
+    }
+}
+
+
+/* OMNIA: quitar los cuadritos junto al carrito */
+.nav-icon-btn[aria-label="Favoritos"],
+.nav-icon-btn[aria-label="Notificaciones"] {
+    display: none !important;
+}
+
+/* OMNIA: asegurar la interacción del menú lateral */
+.menu-toggle {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+.sidebar {
+    z-index: 1000 !important;
+}
+.sidebar-overlay {
+    z-index: 999 !important;
+}
+
+
+/* OMNIA: logotipos de marcas de pago en el pie de página */
+.footer-payment-row .official-payment-logos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.footer-payment-row .card-badge {
+    box-sizing: border-box;
+    width: 58px;
+    min-width: 58px;
+    height: 36px;
+    padding: 6px 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #29272a;
+    border-radius: 5px;
+    background: #fff;
+}
+
+.footer-payment-row .card-badge img {
+    display: block;
+    width: 100%;
+    max-width: 46px;
+    height: 22px;
+    object-fit: contain;
+}
+
+.footer-payment-row .mastercard-official img {
+    max-width: 34px;
+}
+
+@media (max-width: 480px) {
+    .footer-payment-row .official-payment-logos {
+        gap: 6px;
+    }
+}

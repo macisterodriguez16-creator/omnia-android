@@ -60,7 +60,7 @@
 
     <header class="navbar">
         <div class="nav-container">
-            <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menú">☰</button>
+            <button class="menu-toggle" aria-label="Abrir menú">☰</button>
 
             <a href="#hero" class="brand-logo">
                 <span class="brand-mark">∞</span>
@@ -134,13 +134,9 @@
 
         <div class="hero-signature">
             <span>OMNIA</span>
-            <small>EST. 2026</small>
         </div>
 
-        <div class="hero-scroll">
-            <span>SCROLL TO DISCOVER</span>
-            <i></i>
-        </div>
+        
     </section>
 
     <section class="brand-intro">
@@ -251,15 +247,18 @@
 
         <div class="footer-payment-row">
             <span>PAGOS PROCESADOS DE FORMA SEGURA</span>
-            <div class="official-payment-logos">
-                <div class="card-badge visa-official">VISA</div>
-                <div class="card-badge mastercard-official">
-                    <span class="mc-red"></span>
-                    <span class="mc-yellow"></span>
+            <div class="official-payment-logos" aria-label="Métodos de pago">
+                <div class="card-badge visa-official">
+                    <img src="https://cdn.simpleicons.org/visa/1A1F71" alt="Visa" loading="lazy">
                 </div>
-                <div class="card-badge amex-official">AMEX</div>
+                <div class="card-badge mastercard-official">
+                    <img src="https://cdn.simpleicons.org/mastercard/EB001B" alt="Mastercard" loading="lazy">
+                </div>
+                <div class="card-badge amex-official">
+                    <img src="https://cdn.simpleicons.org/americanexpress/2E77BC" alt="American Express" loading="lazy">
+                </div>
                 <div class="card-badge paypal-official">
-                    <span class="pp-b1">Pay</span><span class="pp-b2">Pal</span>
+                    <img src="https://cdn.simpleicons.org/paypal/003087" alt="PayPal" loading="lazy">
                 </div>
             </div>
         </div>
@@ -796,6 +795,71 @@
         </div>
     </div>
 
+    <script>
+    window.toggleSidebar = function () {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (!sidebar || !overlay) {
+            console.error('OMNIA: no se encontró el menú.');
+            return;
+        }
+        const abrir = !sidebar.classList.contains('open');
+        sidebar.classList.toggle('open', abrir);
+        overlay.classList.toggle('active', abrir);
+        document.body.classList.toggle('sidebar-is-open', abrir);
+    };
+    </script>
     <script src="app.js"></script>
+<script>
+(function () {
+    function initOmniaSidebar() {
+        const button = document.querySelector('.menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const closeButton = document.querySelector('.close-sidebar');
+
+        if (!button || !sidebar || !overlay) {
+            console.error('OMNIA: falta el botón, la barra o el fondo.');
+            return;
+        }
+
+        function setOpen(open) {
+            sidebar.classList.toggle('open', open);
+            overlay.classList.toggle('active', open);
+            sidebar.style.transform = open ? 'translateX(0)' : 'translateX(-100%)';
+            sidebar.style.visibility = 'visible';
+            overlay.style.pointerEvents = open ? 'auto' : 'none';
+            document.body.classList.toggle('sidebar-is-open', open);
+        }
+
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(!sidebar.classList.contains('open'));
+        });
+
+        if (closeButton) {
+            closeButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                setOpen(false);
+            });
+        }
+
+        overlay.addEventListener('click', function () {
+            setOpen(false);
+        });
+
+        setOpen(false);
+        console.log('OMNIA: menú lateral inicializado.');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOmniaSidebar, { once: true });
+    } else {
+        initOmniaSidebar();
+    }
+})();
+</script>
+
 </body>
 </html>

@@ -1210,6 +1210,18 @@ export default {
             }
         }
 
+        if (
+            (request.method === "GET" || request.method === "HEAD") &&
+            (url.pathname === "/admin" || url.pathname === "/admin/")
+        ) {
+            return await env.ASSETS.fetch(
+                new Request(
+                    new URL("/admin/index.html", url),
+                    request
+                )
+            );
+        }
+
         if (env.ASSETS) {
             return await env.ASSETS.fetch(request);
         }
