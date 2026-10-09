@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNIA — Control Center</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<div class="admin-app">
+
+    <aside class="sidebar" id="sidebar">
+
+        <div class="sidebar-brand">
+            <div class="brand-mark">∞</div>
+            <div class="brand-name">OMNIA</div>
+            <div class="brand-subtitle">CONTROL CENTER</div>
+        </div>
+
+        <nav class="admin-nav">
+
+            <div class="nav-section">
+                <div class="nav-title">PRINCIPAL</div>
+
+                <button class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">⌂</span>
+                    <span>Dashboard</span>
+                </button>
+
+                <button class="nav-item" data-section="products">
+                    <span class="nav-icon">▣</span>
+                    <span>Productos</span>
+                </button>
+
+                <button class="nav-item" data-section="orders">
+                    <span class="nav-icon">◫</span>
+                    <span>Pedidos</span>
+                </button>
+
+                <button class="nav-item" data-section="customers">
+                    <span class="nav-icon">♙</span>
+                    <span>Clientes</span>
+                </button>
+
+                <button class="nav-item" data-section="inventory">
+                    <span class="nav-icon">▤</span>
+                    <span>Inventario</span>
+                </button>
+
+                <button class="nav-item" data-section="payments">
+                    <span class="nav-icon">◇</span>
+                    <span>Pagos</span>
+                </button>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">VENTAS Y PUBLICACIÓN</div>
+
+                <button class="nav-item" data-section="channels">
+                    <span class="nav-icon">◎</span>
+                    <span>Publicación / Canales</span>
+                </button>
+
+                <button class="nav-item" data-section="integrations">
+                    <span class="nav-icon">⌘</span>
+                    <span>Integraciones</span>
+                </button>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">SISTEMA</div>
+
+                <button class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙</span>
+                    <span>Configuración</span>
+                </button>
+            </div>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="/" class="store-link">
+                <span>↗</span>
+                <span>Ver tienda OMNIA</span>
+            </a>
+        </div>
+
+    </aside>
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <button class="menu-toggle" id="menuToggle">
+                ☰
+            </button>
+
+            <div class="topbar-title">
+                <span class="eyebrow">OMNIA</span>
+                <h1 id="pageTitle">Dashboard</h1>
+            </div>
+
+            <div class="topbar-actions">
+
+                <button class="topbar-button" title="Notificaciones">
+                    ♢
+                </button>
+
+                <div class="admin-user">
+                    <div class="user-avatar">O</div>
+                    <div class="user-info">
+                        <strong>Administrador</strong>
+                        <span>Control Center</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </header>
+
+        <div class="content" id="adminContent">
+
+            <section class="admin-section active" id="section-dashboard">
+
+                <div class="welcome">
+                    <div>
+                        <span class="section-label">CENTRO DE CONTROL</span>
+                        <h2>Bienvenido a OMNIA</h2>
+                        <p>Administra productos, ventas, inventario, clientes y canales desde un solo lugar.</p>
+                    </div>
+
+                    <button class="primary-button" data-section-action="products">
+                        + Nuevo producto
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+                        <div class="stat-icon">▣</div>
+                        <div class="stat-label">PRODUCTOS</div>
+                        <div class="stat-value" id="statProducts">—</div>
+                        <div class="stat-note">Catálogo OMNIA</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">◫</div>
+                        <div class="stat-label">PEDIDOS</div>
+                        <div class="stat-value" id="statOrders">—</div>
+                        <div class="stat-note">Pedidos registrados</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">♙</div>
+                        <div class="stat-label">CLIENTES</div>
+                        <div class="stat-value" id="statCustomers">—</div>
+                        <div class="stat-note">Clientes registrados</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">◇</div>
+                        <div class="stat-label">VENTAS</div>
+                        <div class="stat-value" id="statSales">—</div>
+                        <div class="stat-note">Ventas procesadas</div>
+                    </div>
+
+                </div>
+
+                <div class="dashboard-grid">
+
+                    <div class="panel-card large">
+
+                        <div class="panel-header">
+                            <div>
+                                <span class="section-label">CATÁLOGO</span>
+                                <h3>Productos recientes</h3>
+                            </div>
+
+                            <button class="text-button" data-section-action="products">
+                                Ver todos →
+                            </button>
+                        </div>
+
+                        <div id="recentProducts" class="empty-state">
+                            <div class="empty-icon">▣</div>
+                            <h4>Cargando productos...</h4>
+                            <p>Los productos de OMNIA aparecerán aquí.</p>
+                        </div>
+
+                    </div>
+
+                    <div class="panel-card">
+
+                        <div class="panel-header">
+                            <div>
+                                <span class="section-label">PUBLICACIÓN</span>
+                                <h3>Canales</h3>
+                            </div>
+                        </div>
+
+                        <div class="channel-list">
+
+                            <div class="channel-row">
+                                <div class="channel-logo">∞</div>
+                                <div>
+                                    <strong>OMNIA Marketplace</strong>
+                                    <span>Catálogo principal</span>
+                                </div>
+                                <span class="status-dot online"></span>
+                            </div>
+
+                            <div class="channel-row">
+                                <div class="channel-logo">P</div>
+                                <div>
+                                    <strong>Printify</strong>
+                                    <span>Proveedor conectado</span>
+                                </div>
+                                <span class="status-dot online"></span>
+                            </div>
+
+                            <div class="channel-row">
+                                <div class="channel-logo">S</div>
+                                <div>
+                                    <strong>Shopify</strong>
+                                    <span>Canal de venta</span>
+                                </div>
+                                <span class="status-dot"></span>
+                            </div>
+
+                            <div class="channel-row">
+                                <div class="channel-logo">e</div>
+                                <div>
+                                    <strong>eBay</strong>
+                                    <span>Canal de venta</span>
+                                </div>
+                                <span class="status-dot"></span>
+                            </div>
+
+                        </div>
+
+                        <button class="secondary-button" data-section-action="channels">
+                            Administrar canales
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="panel-card publication-panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <span class="section-label">FLUJO DE PUBLICACIÓN</span>
+                            <h3>Control de productos y canales</h3>
+                        </div>
+                    </div>
+
+                    <div class="publication-flow">
+
+                        <div class="flow-step">
+                            <div class="flow-number">01</div>
+                            <strong>Crear producto</strong>
+                            <span>Define información, precio, imágenes y variantes.</span>
+                        </div>
+
+                        <div class="flow-line"></div>
+
+                        <div class="flow-step">
+                            <div class="flow-number">02</div>
+                            <strong>Seleccionar canales</strong>
+                            <span>Decide dónde quieres publicar cada producto.</span>
+                        </div>
+
+                        <div class="flow-line"></div>
+
+                        <div class="flow-step">
+                            <div class="flow-number">03</div>
+                            <strong>Publicar y sincronizar</strong>
+                            <span>OMNIA controla la publicación y sincronización.</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="admin-section" id="section-products">
+                <div class="section-page">
+                    <span class="section-label">CATÁLOGO</span>
+                    <h2>Productos</h2>
+                    <p>Gestiona productos, variantes, imágenes y publicaciones.</p>
+                    <div class="admin-products-container"></div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-orders">
+                <div class="section-page">
+                    <span class="section-label">VENTAS</span>
+                    <h2>Pedidos</h2>
+                    <p>Consulta y administra todos los pedidos de OMNIA.</p>
+                    <div class="coming-card">
+                        <div class="coming-icon">◫</div>
+                        <h3>Gestión de pedidos</h3>
+                        <p>Preparado para conectarse con OMNIA API.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-customers">
+                <div class="section-page">
+                    <span class="section-label">CLIENTES</span>
+                    <h2>Clientes</h2>
+                    <p>Administra clientes y sus datos de compra.</p>
+                    <div class="coming-card">
+                        <div class="coming-icon">♙</div>
+                        <h3>Gestión de clientes</h3>
+                        <p>Preparado para conectarse con D1.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-inventory">
+                <div class="section-page">
+                    <span class="section-label">INVENTARIO</span>
+                    <h2>Inventario</h2>
+                    <p>Controla existencias, variantes y disponibilidad.</p>
+                    <div class="coming-card">
+                        <div class="coming-icon">▤</div>
+                        <h3>Control de inventario</h3>
+                        <p>Preparado para sincronización con productos.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-payments">
+                <div class="section-page">
+                    <span class="section-label">FINANZAS</span>
+                    <h2>Pagos</h2>
+                    <p>Consulta el estado de pagos y transacciones.</p>
+                    <div class="coming-card">
+                        <div class="coming-icon">◇</div>
+                        <h3>Gestión de pagos</h3>
+                        <p>Preparado para conectarse con la API.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-channels">
+                <div class="section-page">
+                    <span class="section-label">PUBLICACIÓN</span>
+                    <h2>Publicación / Canales</h2>
+                    <p>Decide en qué tiendas y canales se publica cada producto.</p>
+
+                    <div class="channel-management">
+                        <div class="channel-management-card">
+                            <div class="channel-big-logo">∞</div>
+                            <div>
+                                <h3>OMNIA Marketplace</h3>
+                                <p>Catálogo de arte impreso y cuadros impresos.</p>
+                            </div>
+                            <span class="connection-status connected">ACTIVO</span>
+                        </div>
+
+                        <div class="channel-management-card">
+                            <div class="channel-big-logo">P</div>
+                            <div>
+                                <h3>Printify</h3>
+                                <p>Productos y producción bajo demanda.</p>
+                            </div>
+                            <span class="connection-status connected">CONECTADO</span>
+                        </div>
+
+                        <div class="channel-management-card">
+                            <div class="channel-big-logo">S</div>
+                            <div>
+                                <h3>Shopify</h3>
+                                <p>Publicación externa.</p>
+                            </div>
+                            <span class="connection-status">NO CONFIGURADO</span>
+                        </div>
+
+                        <div class="channel-management-card">
+                            <div class="channel-big-logo">e</div>
+                            <div>
+                                <h3>eBay</h3>
+                                <p>Publicación externa.</p>
+                            </div>
+                            <span class="connection-status">NO CONFIGURADO</span>
+                        </div>
+
+                        <div class="channel-management-card">
+                            <div class="channel-big-logo">A</div>
+                            <div>
+                                <h3>Amazon</h3>
+                                <p>Publicación externa.</p>
+                            </div>
+                            <span class="connection-status">NO CONFIGURADO</span>
+                        </div>
+
+                        <div class="channel-management-card">
+                            <div class="channel-big-logo">B</div>
+                            <div>
+                                <h3>Bonanza</h3>
+                                <p>Publicación externa.</p>
+                            </div>
+                            <span class="connection-status">NO CONFIGURADO</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-integrations">
+                <div class="section-page">
+                    <span class="section-label">CONEXIONES</span>
+                    <h2>Integraciones</h2>
+                    <p>Administra las conexiones entre OMNIA y plataformas externas.</p>
+                    <div class="coming-card">
+                        <div class="coming-icon">⌘</div>
+                        <h3>Integraciones</h3>
+                        <p>Printify, Shopify, eBay, Amazon y Bonanza.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section" id="section-settings">
+                <div class="section-page">
+                    <span class="section-label">SISTEMA</span>
+                    <h2>Configuración</h2>
+                    <p>Configuración general del Control Center.</p>
+                    <div class="coming-card">
+                        <div class="coming-icon">⚙</div>
+                        <h3>Configuración</h3>
+                        <p>Opciones generales de OMNIA.</p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="admin.js"></script>
+
+</body>
+</html>
