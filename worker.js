@@ -23,6 +23,10 @@ export default {
         }
 
         if (request.method === "GET" && url.pathname === "/") {
+            if (env.ASSETS) {
+                return await env.ASSETS.fetch(request);
+            }
+
             return new Response(
                 JSON.stringify({
                     status: "success",
