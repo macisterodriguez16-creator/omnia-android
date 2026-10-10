@@ -707,34 +707,24 @@ function createPrintifyProductId(printifyId) {
 }
 
 async function getPrintifyProducts() {
-    const allProducts = [];
-    let page = 1;
-    let lastPage = 1;
+    const res = await fetch(
+        `${OMNIA_API_BACKEND}/api/catalog/omnia`
+    );
 
-    while (page <= lastPage) {
-        const res = await fetch(`${OMNIA_API_BACKEND}/api/printify/products?page=${page}`);
-
-        if (!res.ok) {
-            throw new Error(`Error HTTP Printify: ${res.status}`);
-        }
-
-        const json = await res.json();
-
-        if (
-            json.status !== "success" ||
-            !json.data ||
-            !Array.isArray(json.data.data)
-        ) {
-            throw new Error("Respuesta de Printify no válida.");
-        }
-
-        allProducts.push(...json.data.data);
-
-        lastPage = Number(json.data.last_page) || page;
-        page++;
+    if (!res.ok) {
+        throw new Error(`Error HTTP catálogo OMNIA: ${res.status}`);
     }
 
-    return allProducts;
+    const json = await res.json();
+
+    if (
+        json.status !== "success" ||
+        !Array.isArray(json.products)
+    ) {
+        throw new Error("Respuesta del catálogo OMNIA no válida.");
+    }
+
+    return json.products;
 }
 
 async function syncPrintifyProducts() {
@@ -796,7 +786,8 @@ async function syncEbayInventory() {
 
 async function loadPrintifyCatalog() {
     try {
-        const printifyProducts = await syncPrintifyProducts();
+        const printifyProducts = (await syncPrintifyProducts())
+            .filter(item => item && item.is_published === true);
 
         if (!printifyProducts.length) {
             return;

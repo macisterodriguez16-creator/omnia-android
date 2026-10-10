@@ -410,15 +410,23 @@ export default {
             try {
                 const { results } = await env.DB.prepare(`
                     SELECT
-                        printify_id,
-                        shop_id,
-                        title,
-                        description,
-                        status,
-                        payload_json,
-                        updated_at
-                    FROM printify_products
-                    ORDER BY updated_at DESC
+                        p.printify_id,
+                        p.shop_id,
+                        p.title,
+                        p.description,
+                        p.status,
+                        p.payload_json,
+                        p.updated_at,
+                        EXISTS (
+                            SELECT 1
+                            FROM product_channels pc
+                            WHERE pc.product_id = p.printify_id
+                              AND pc.enabled = 1
+                              AND pc.status = 'published'
+                              AND pc.channel = 'omnia'
+                        ) AS is_published
+                    FROM printify_products p
+                    ORDER BY p.updated_at DESC
                 `).all();
 
                 const products = (results || []).map(product => {
@@ -485,10 +493,13 @@ export default {
                             payload.status ||
                             "",
                         price,
-                        image:
-                            defaultImage
-                                ? defaultImage.src
-                                : "",
+                        image: defaultImage ? defaultImage.src : "",
+                        images: images,
+                        variants: variants.map(variant => ({
+                            ...variant,
+                            enabled: variant.is_enabled === true
+                        })),
+                        is_published: Number(product.is_published) === 1,
                         updated_at: product.updated_at
                     };
                 });
