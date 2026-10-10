@@ -24,7 +24,9 @@ export default {
 
         if (request.method === "GET" && url.pathname === "/") {
             if (env.ASSETS) {
-                return await env.ASSETS.fetch(request);
+                return await env.ASSETS.fetch(
+                    new Request(new URL("/index.html", url), request)
+                );
             }
 
             return new Response(
