@@ -407,4 +407,224 @@ export default {
                         await env.DB.prepare(`DELETE FROM printify_products WHERE printify_id = ?`).bind(String(printifyId)).run();
                     }
                     return new Response(
-                        JSON.stringify({ status: "success", 
+                        JSON.stringify({ status: "success", message: "Producto eliminado de D1 correctamente.", printify_id: printifyId || null }),
+                        { status: 200, headers: jsonHeaders }
+                    );
+                }
+
+                if (!printifyId) {
+                    return new Response(
+                        JSON.stringify({ status: "success", message: "Webhook recibido sin producto procesable." }),
+                        { status: 200, headers: jsonHeaders }
+                    );
+                }
+
+                if (!env.PRINTIFY_API_KEY || !env.PRINTIFY_SHOP_ID) {
+                    throw new Error("Falta PRINTIFY_API_KEY o PRINTIFY_SHOP_ID para obtener el producto completo.");
+                }
+
+                const productResponse = await fetch(`${PRINTIFY_API_BASE}/shops/${encodeURIComponent(String(env.PRINTIFY_SHOP_ID))}/products/${encodeURIComponent(String(printifyId))}.json`, {
+                    headers: { Authorization: `Bearer ${env.PRINTIFY_API_KEY}` }
+                });
+
+                if (!productResponse.ok) {
+                    const errorText = await productResponse.text();
+                    throw new Error(`No se pudo obtener el producto completo de Printify. HTTP ${productResponse.status}: ${errorText}`);
+                }
+
+                product = await productResponse.json();
+                if (!product || typeof product !== "object" || !product.id) {
+                    throw new Error("Printify no devolvió un producto completo válido.");
+                }
+
+                await env.DB.prepare(`
+                    INSERT INTO printify_products (printify_id, shop_id, title, description, status, payload_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(printify_id) DO UPDATE SET
+                        shop_id = excluded.shop_id,
+                        title = excluded.title,
+                        description = excluded.description,
+                        status = excluded.status,
+                        payload_json = excluded.payload_json,
+                        updated_at = CURRENT_TIMESTAMP
+                `).bind(
+                    String(product.id),
+                    String(product.shop_id || env.PRINTIFY_SHOP_ID),
+                    product.title || "",
+                    product.description || "",
+                    product.status || "",
+                    JSON.stringify(product)
+                ).run();
+
+                return new Response(
+                    JSON.stringify({ status: "success", message: "Webhook Printify procesado correctamente.", topic, printify_id: product.id }),
+                    { status: 200, headers: jsonHeaders }
+                );
+            } catch (error) {
+                return new Response(
+                    JSON.stringify({ status: "error", message: error.message }),
+                    { status: 500, headers: jsonHeaders }
+                );
+            }
+        }
+
+        if (request.method === "GET" && url.pathname === "/api/admin/products") {
+            try {
+                const { results } = await env.DB.prepare(`
+                    SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.updated_at, COUNT(pc.id) AS channel_count
+                    FROM printify_products p
+                    LEFT JOIN product_channels pc ON pc.product_id = p.printify_id AND pc.enabled = 1
+                    GROUP BY p.printify_id, p.shop_id, p.title, p.description, p.status, p.updated_at
+                    ORDER BY p.updated_at DESC
+                `).all();
+
+                const products = [];
+                for (const product of results || []) {
+                    const { results: channels } = await env.DB.prepare(`
+                        SELECT id, product_id, channel, enabled, status, external_product_id, published_at, created_at, updated_at
+                        FROM product_channels WHERE product_id = ? ORDER BY channel ASC
+                    `).bind(product.printify_id).all();
+
+                    products.push({ ...product, channels: channels || [] });
+                }
+
+                return new Response(
+                    JSON.stringify({ status: "success", products }),
+                    { status: 200, headers: jsonHeaders }
+                );
+            } catch (error) {
+                return new Response(
+                    JSON.stringify({ status: "error", message: error.message }),
+                    { status: 500, headers: jsonHeaders }
+                );
+            }
+        }
+
+        if (request.method === "GET" && url.pathname.match(/^\/api\/admin\/products\/[^/]+\/channels$/)) {
+            try {
+                const printifyId = decodeURIComponent(url.pathname.split("/")[4] || "");
+                if (!printifyId) {
+                    return new Response(
+                        JSON.stringify({ status: "error", message: "Falta el ID del producto." }),
+                        { status: 400, headers: jsonHeaders }
+                    );
+                }
+
+                const { results } = await env.DB.prepare(`
+                    SELECT id, product_id, channel, enabled, status, external_product_id, published_at, created_at, updated_at
+                    FROM product_channels WHERE product_id = ? ORDER BY channel ASC
+                `).bind(printifyId).all();
+
+                return new Response(
+                    JSON.stringify({ status: "success", product_id: printifyId, channels: results || [] }),
+                    { status: 200, headers: jsonHeaders }
+                );
+            } catch (error) {
+                return new Response(
+                    JSON.stringify({ status: "error", message: error.message }),
+                    { status: 500, headers: jsonHeaders }
+                );
+            }
+        }
+
+        if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/products\/[^/]+\/channels$/)) {
+            try {
+                const printifyId = decodeURIComponent(url.pathname.split("/")[4] || "");
+                const body = await request.json();
+                const channel = String(body.channel || "").trim().toLowerCase();
+                const allowedChannels = ["omnia", "shopify", "amazon", "bonanza"];
+
+                if (!printifyId) {
+                    return new Response(
+                        JSON.stringify({ status: "error", message: "Falta el ID del producto." }),
+                        { status: 400, headers: jsonHeaders }
+                    );
+                }
+
+                if (!allowedChannels.includes(channel)) {
+                    return new Response(
+                        JSON.stringify({ status: "error", message: "Canal no válido.", allowed_channels: allowedChannels }),
+                        { status: 400, headers: jsonHeaders }
+                    );
+                }
+
+                const product = await env.DB.prepare(`
+                    SELECT printify_id, shop_id, title, description, status
+                    FROM printify_products WHERE printify_id = ? LIMIT 1
+                `).bind(printifyId).first();
+
+                if (!product) {
+                    return new Response(
+                        JSON.stringify({ status: "error", message: "Producto no encontrado." }),
+                        { status: 404, headers: jsonHeaders }
+                    );
+                }
+
+                await env.DB.prepare(`
+                    INSERT INTO product_channels (product_id, channel, enabled, status, published_at, updated_at)
+                    VALUES (?, ?, 1, 'published', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT(product_id, channel) DO UPDATE SET
+                        enabled = 1,
+                        status = 'published',
+                        published_at = COALESCE(product_channels.published_at, CURRENT_TIMESTAMP),
+                        updated_at = CURRENT_TIMESTAMP
+                `).bind(printifyId, channel).run();
+
+                const savedChannel = await env.DB.prepare(`
+                    SELECT id, product_id, channel, enabled, status, external_product_id, published_at, created_at, updated_at
+                    FROM product_channels WHERE product_id = ? AND channel = ? LIMIT 1
+                `).bind(printifyId, channel).first();
+
+                return new Response(
+                    JSON.stringify({ status: "success", message: "Canal asignado correctamente.", product, channel: savedChannel }),
+                    { status: 200, headers: jsonHeaders }
+                );
+            } catch (error) {
+                return new Response(
+                    JSON.stringify({ status: "error", message: error.message }),
+                    { status: 500, headers: jsonHeaders }
+                );
+            }
+        }
+
+        if (request.method === "DELETE" && url.pathname.match(/^\/api\/admin\/products\/[^/]+\/channels\/[^/]+$/)) {
+            try {
+                const parts = url.pathname.split("/");
+                const printifyId = decodeURIComponent(parts[4] || "");
+                const channel = decodeURIComponent(parts[6] || "").trim().toLowerCase();
+
+                if (!printifyId || !channel) {
+                    return new Response(
+                        JSON.stringify({ status: "error", message: "Falta el producto o el canal." }),
+                        { status: 400, headers: jsonHeaders }
+                    );
+                }
+
+                await env.DB.prepare(`DELETE FROM product_channels WHERE product_id = ? AND channel = ?`).bind(printifyId, channel).run();
+
+                return new Response(
+                    JSON.stringify({ status: "success", message: "Canal eliminado correctamente.", product_id: printifyId, channel }),
+                    { status: 200, headers: jsonHeaders }
+                );
+            } catch (error) {
+                return new Response(
+                    JSON.stringify({ status: "error", message: error.message }),
+                    { status: 500, headers: jsonHeaders }
+                );
+            }
+        }
+
+        if ((request.method === "GET" || request.method === "HEAD") && (url.pathname === "/admin" || url.pathname === "/admin/")) {
+            return await env.ASSETS.fetch(new Request(new URL("/admin/index.html", url), request));
+        }
+
+        if (env.ASSETS) {
+            return await env.ASSETS.fetch(request);
+        }
+
+        return new Response(
+            JSON.stringify({ status: "error", message: "Ruta no encontrada." }),
+            { status: 404, headers: jsonHeaders }
+        );
+    }
+};
