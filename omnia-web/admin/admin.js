@@ -36,6 +36,7 @@ function getAdminHeaders(includeJson = false) {
 
     if (adminSecret) {
         headers["Authorization"] = `Bearer ${adminSecret}`;
+        headers["X-Admin-Secret"] = adminSecret;
     }
 
     return headers;
