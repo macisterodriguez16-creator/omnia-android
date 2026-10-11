@@ -851,59 +851,67 @@ export default {
                 );
             }
         }
-
+        
         if (
             request.method === "GET" &&
             url.pathname === "/api/admin/products"
         ) {
             try {
-                const { results } = await env.DB.prepare(`
+                const productQuery = await env.DB.prepare(`
                     SELECT
-                        p.printify_id,
-                        p.shop_id,
-                        p.title,
-                        p.description,
-                        p.status,
-                        p.updated_at,
-                        COUNT(pc.id) AS channel_count
-                    FROM printify_products p
-                    LEFT JOIN product_channels pc
-                        ON pc.product_id = p.printify_id
-                        AND pc.enabled = 1
-                    GROUP BY
-                        p.printify_id,
-                        p.shop_id,
-                        p.title,
-                        p.description,
-                        p.status,
-                        p.updated_at
-                    ORDER BY p.updated_at DESC
+                        printify_id,
+                        shop_id,
+                        title,
+                        description,
+                        status,
+                        updated_at
+                    FROM printify_products
+                    ORDER BY updated_at DESC
                 `).all();
 
-                const products = [];
+                const channelQuery = await env.DB.prepare(`
+                    SELECT
+                        id,
+                        product_id,
+                        channel,
+                        enabled,
+                        status,
+                        external_product_id,
+                        published_at,
+                        created_at,
+                        updated_at
+                    FROM product_channels
+                    ORDER BY product_id, channel ASC
+                `).all();
 
-                for (const product of results || []) {
-                    const { results: channels } = await env.DB.prepare(`
-                        SELECT
-                            id,
-                            product_id,
-                            channel,
-                            enabled,
-                            status,
-                            external_product_id,
-                            published_at,
-                            created_at,
-                            updated_at
-                        FROM product_channels
-                        WHERE product_id = ?
-                        ORDER BY channel ASC
-                    `).bind(product.printify_id).all();
+                const productRows = productQuery.results || [];
+                const channelRows = channelQuery.results || [];
+                const channelsByProduct = new Map();
 
-                    products.push({
-                        ...product,
-                        channels: channels || []
-                    });
+                for (const channel of channelRows) {
+                    const productId = String(channel.product_id);
+
+                    if (!channelsByProduct.has(productId)) {
+                        channelsByProduct.set(productId, []);
+                    }
+
+                    channelsByProduct.get(productId).push(channel);
                 }
+
+                const products = productRows.map(product => {
+                    const channels =
+                        channelsByProduct.get(String(product.printify_id)) || [];
+
+                    const channelCount = channels.filter(
+                        channel => Number(channel.enabled) === 1
+                    ).length;
+
+                    return {
+                        ...product,
+                        channel_count: channelCount,
+                        channels
+                    };
+                });
 
                 return new Response(
                     JSON.stringify({
@@ -921,7 +929,7 @@ export default {
                     { status: 500, headers: jsonHeaders }
                 );
             }
-        }
+        }                                                    
 
         if (
             request.method === "GET" &&
