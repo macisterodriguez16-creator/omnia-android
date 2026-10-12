@@ -890,5 +890,67 @@
 })();
 </script>
 
+<!-- OMNIA: Visor ampliado de imágenes -->
+<div
+    id="productZoomModal"
+    class="product-zoom-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Imagen ampliada del producto"
+    aria-hidden="true"
+    hidden
+>
+    <button
+        type="button"
+        id="productZoomClose"
+        class="product-zoom-close"
+        aria-label="Cerrar imagen ampliada"
+    >×</button>
+
+    <div class="product-zoom-toolbar">
+        <button
+            type="button"
+            id="productZoomOut"
+            aria-label="Alejar imagen"
+        >−</button>
+
+        <button
+            type="button"
+            id="productZoomReset"
+            aria-label="Restablecer zoom"
+        >100%</button>
+
+        <button
+            type="button"
+            id="productZoomIn"
+            aria-label="Acercar imagen"
+        >+</button>
+    </div>
+
+    <button
+        type="button"
+        id="productZoomPrev"
+        class="product-zoom-nav product-zoom-prev"
+        aria-label="Imagen anterior"
+    >‹</button>
+
+    <div id="productZoomViewport" class="product-zoom-viewport">
+        <img
+            id="productZoomImage"
+            src=""
+            alt="Imagen ampliada del producto"
+            draggable="false"
+        >
+    </div>
+
+    <button
+        type="button"
+        id="productZoomNext"
+        class="product-zoom-nav product-zoom-next"
+        aria-label="Imagen siguiente"
+    >›</button>
+</div>
+<!-- Fin del visor OMNIA --> 
+
 </body>
 </html>
