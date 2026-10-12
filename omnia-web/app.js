@@ -341,6 +341,303 @@ function changeProductImage(direction) {
     );
 }
 
+function getPrintifyVariantOptions(product) {
+    const definitions = Array.isArray(product.printifyOptions)
+        ? product.printifyOptions
+        : [];
+
+    return definitions.map((definition, index) => {
+        const values = Array.isArray(definition.values)
+            ? definition.values
+            : [];
+
+        return {
+            index,
+            name: definition.title || definition.name || `Opción ${index + 1}`,
+            values: values.map(value => {
+                if (typeof value === "object" && value !== null) {
+                    return {
+                        id: String(value.id ?? value.value ?? ""),
+                        label: String(value.title ?? value.name ?? value.value ?? "")
+                    };
+                }
+
+                return {
+                    id: String(value),
+                    label: String(value)
+                };
+            }).filter(value => value.id && value.label)
+        };
+    }).filter(option => option.values.length > 0);
+}
+
+function renderProductVariants(product) {
+    const container = document.getElementById("modalProductVariants");
+    if (!container) return;
+
+    const definitions = getPrintifyVariantOptions(product);
+
+    if (!definitions.length) {
+        container.innerHTML = "";
+        return;
+    }
+
+    container.innerHTML = definitions.map(definition => `
+        <label class="variant-field">
+            <span>${definition.name}</span>
+            <select
+                class="variant-select"
+                data-option-index="${definition.index}"
+                aria-label="${definition.name}"
+            >
+                ${definition.values.map(value => `
+                    <option value="${value.id}">${value.label}</option>
+                `).join("")}
+            </select>
+        </label>
+    `).join("");
+}
+
+let selectedPrintifyVariant = null;
+
+function getPrintifyVariantOptions(product) {
+    const definitions = Array.isArray(product.printifyOptions)
+        ? product.printifyOptions
+        : [];
+
+    return definitions.map((definition, index) => {
+        const values = Array.isArray(definition.values)
+            ? definition.values
+            : Array.isArray(definition.valores)
+                ? definition.valores
+                : [];
+
+        return {
+            index,
+            name:
+                definition.title ||
+                definition.name ||
+                definition.título ||
+                definition.nombre ||
+                `Opción ${index + 1}`,
+            values: values.map(value => {
+                if (value && typeof value === "object") {
+                    const id = value.id ?? value.value ?? "";
+                    const label =
+                        value.title ??
+                        value.name ??
+                        value.título ??
+                        value.nombre ??
+                        value.value ??
+                        "";
+
+                    return {
+                        id: String(id),
+                        label: String(label)
+                    };
+                }
+
+                return {
+                    id: String(value),
+                    label: String(value)
+                };
+            }).filter(value => value.id && value.label)
+        };
+    }).filter(option => option.values.length > 0);
+}
+
+function renderProductVariants(product) {
+    const container = document.getElementById("modalProductVariants");
+    if (!container) return;
+
+    const variants = Array.isArray(product.printifyVariants)
+        ? product.printifyVariants
+        : [];
+
+    const definitions = getPrintifyVariantOptions(product);
+
+    selectedPrintifyVariant =
+        variants.find(variant => variant.is_default === true) ||
+        variants[0] ||
+        null;
+
+    if (!definitions.length || !selectedPrintifyVariant) {
+        container.innerHTML = "";
+        return;
+    }
+
+    container.innerHTML = definitions.map(definition => `
+        <label class="variant-field">
+            <span>${definition.name}</span>
+            <select
+                class="variant-select"
+                data-option-index="${definition.index}"
+                aria-label="${definition.name}"
+            >
+                ${definition.values.map(value => `
+                    <option value="${value.id}">${value.label}</option>
+                `).join("")}
+            </select>
+        </label>
+    `).join("");
+
+    const selects = container.querySelectorAll(".variant-select");
+
+    selects.forEach(select => {
+        select.addEventListener("change", handlePrintifyVariantChange);
+    });
+
+    const initialOptions = Array.isArray(selectedPrintifyVariant.options)
+        ? selectedPrintifyVariant.options
+        : [];
+
+    selects.forEach((select, index) => {
+        const optionId = initialOptions[index];
+
+        if (
+            optionId !== undefined &&
+            Array.from(select.options).some(
+                option => option.value === String(optionId)
+            )
+        ) {
+            select.value = String(optionId);
+        }
+    });
+
+    handlePrintifyVariantChange();
+}
+
+function handlePrintifyVariantChange() {
+    if (!selectedProduct) return;
+
+    const variants = Array.isArray(selectedProduct.printifyVariants)
+        ? selectedProduct.printifyVariants
+        : [];
+
+    const selects = Array.from(
+        document.querySelectorAll(
+            "#modalProductVariants .variant-select"
+        )
+    );
+
+    const selectedOptions = selects.map(select => select.value);
+
+    const match = variants.find(variant => {
+        if (!Array.isArray(variant.options)) return false;
+
+        return selectedOptions.every((value, index) =>
+            String(variant.options[index]) === String(value)
+        );
+    });
+
+    if (!match) {
+        selectedPrintifyVariant = null;
+        document.getElementById("modalProductPrice").textContent =
+            "Combinación no disponible";
+        return;
+    }
+
+    selectedPrintifyVariant = match;
+
+    const priceUSD = Number.isFinite(Number(match.priceUSD))
+        ? Number(match.priceUSD)
+        : Number(match.price) / 100;
+
+    if (!Number.isFinite(priceUSD) || priceUSD <= 0) {
+        document.getElementById("modalProductPrice").textContent =
+            "Precio no disponible";
+        return;
+    }
+
+    const price = (
+        priceUSD * rates[currentCurrency]
+    ).toLocaleString("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    document.getElementById("modalProductPrice").textContent =
+        `${symbols[currentCurrency]}${price}`;
+                    }
+
+function handlePrintifyVariantChange() {
+    if (!selectedProduct) return;
+
+    const variants = Array.isArray(selectedProduct.printifyVariants)
+        ? selectedProduct.printifyVariants
+        : [];
+
+    const definitions = getPrintifyVariantOptions(selectedProduct);
+
+    const selects = document.querySelectorAll(
+        "#modalProductVariants .variant-select"
+    );
+
+    const selectedValues = Array.from(selects).map(select => ({
+        index: Number(select.dataset.optionIndex),
+        value: select.value
+    }));
+
+    const match = variants.find(variant => {
+        return selectedValues.every(selection => {
+            const definition = definitions.find(
+                option => option.index === selection.index
+            );
+
+            if (!definition) return true;
+
+            const variantOption = Array.isArray(variant.options)
+                ? variant.options.find(option =>
+                    String(option.name) === String(definition.name) ||
+                    String(option.id) === String(definition.id)
+                )
+                : null;
+
+            if (variantOption) {
+                return String(
+                    variantOption.value ?? variantOption.id ?? ""
+                ) === selection.value;
+            }
+
+            const optionValue = variant[
+                `option${selection.index + 1}`
+            ];
+
+            return optionValue === undefined ||
+                String(optionValue) === selection.value;
+        });
+    });
+
+    if (match) {
+        selectedPrintifyVariant = match;
+        updateSelectedPrintifyVariant(match);
+    }
+}
+
+function updateSelectedPrintifyVariant(variant) {
+    if (!variant || !selectedProduct) return;
+
+    const priceUSD = Number.isFinite(Number(variant.priceUSD))
+        ? Number(variant.priceUSD)
+        : Number(variant.price) / 100;
+
+    if (!Number.isFinite(priceUSD) || priceUSD <= 0) {
+        document.getElementById("modalProductPrice").textContent =
+            "Precio no disponible";
+        return;
+    }
+
+    const price = (
+        priceUSD * rates[currentCurrency]
+    ).toLocaleString("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    document.getElementById("modalProductPrice").textContent =
+        `${symbols[currentCurrency]}${price}`;
+        }
+
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
 
@@ -391,6 +688,8 @@ function openProductModal(id) {
     document.getElementById("modalProductPrice").textContent =
         `${symbols[currentCurrency]}${price}`;
 
+    renderProductVariants(selectedProduct);
+
     document.getElementById("modalCulturalTip").innerHTML =
         countryTraditions[currentCurrency] ||
         countryTraditions["USD"];
@@ -418,13 +717,50 @@ function decrementQty() {
 }
 
 function addModalToCart() {
-    const qty = parseInt(document.getElementById('productQty').value) || 1;
-    for(let i = 0; i < qty; i++) {
-        cart.push(selectedProduct);
+    if (!selectedProduct) return;
+
+    const variants = Array.isArray(selectedProduct.printifyVariants)
+        ? selectedProduct.printifyVariants
+        : [];
+
+    let productToAdd = { ...selectedProduct };
+
+    if (variants.length > 0) {
+        if (
+            !selectedPrintifyVariant ||
+            !variants.some(v => v.id === selectedPrintifyVariant.id)
+        ) {
+            alert("Selecciona una combinación de opciones disponible antes de continuar.");
+            return;
+        }
+
+        const variantPrice = Number(selectedPrintifyVariant.priceUSD);
+
+        if (!Number.isFinite(variantPrice) || variantPrice <= 0) {
+            alert("El precio de esta variante no está disponible.");
+            return;
+        }
+
+        productToAdd = {
+            ...selectedProduct,
+            priceUSD: variantPrice,
+            selectedVariant: { ...selectedPrintifyVariant },
+            cartVariantTitle: selectedPrintifyVariant.title || ""
+        };
     }
+
+    const qty = Math.max(
+        1,
+        parseInt(document.getElementById("productQty").value, 10) || 1
+    );
+
+    for (let i = 0; i < qty; i++) {
+        cart.push({ ...productToAdd });
+    }
+
     updateCartUI();
     closeProductModal();
-}
+         }
 
 /* PASARELA PAYPAL EXPRESS */
 function initPayPalButtons() {
