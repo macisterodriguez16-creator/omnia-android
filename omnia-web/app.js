@@ -266,6 +266,82 @@ function changeCurrency() {
 
 }
 
+let currentProductImages = [];
+let currentProductImageIndex = 0;
+
+function renderProductGallery(images) {
+    currentProductImages = Array.isArray(images)
+        ? [...new Set(images.filter(src => typeof src === "string" && src.trim()))]
+        : [];
+
+    currentProductImageIndex = 0;
+
+    const mainImage = document.getElementById("modalProductImg");
+    const thumbnails = document.getElementById("modalProductThumbnails");
+    const previousButton = document.getElementById("galleryPrev");
+    const nextButton = document.getElementById("galleryNext");
+
+    if (!mainImage || !thumbnails) return;
+
+    if (currentProductImages.length === 0) {
+        mainImage.removeAttribute("src");
+        mainImage.alt = "Imagen no disponible";
+        thumbnails.innerHTML = "";
+        if (previousButton) previousButton.hidden = true;
+        if (nextButton) nextButton.hidden = true;
+        return;
+    }
+
+    mainImage.src = currentProductImages[0];
+    mainImage.alt = selectedProduct?.titleCustom || "Producto OMNIA";
+
+    thumbnails.innerHTML = currentProductImages.map((src, index) => `
+        <button
+            type="button"
+            class="product-thumbnail${index === 0 ? " active" : ""}"
+            onclick="selectProductImage(${index})"
+            aria-label="Ver imagen ${index + 1}"
+            aria-pressed="${index === 0}"
+        >
+            <img src="${src}" alt="" loading="lazy">
+        </button>
+    `).join("");
+
+    const showNavigation = currentProductImages.length > 1;
+
+    if (previousButton) previousButton.hidden = !showNavigation;
+    if (nextButton) nextButton.hidden = !showNavigation;
+}
+
+function selectProductImage(index) {
+    if (index < 0 || index >= currentProductImages.length) return;
+
+    currentProductImageIndex = index;
+
+    const mainImage = document.getElementById("modalProductImg");
+    if (mainImage) {
+        mainImage.src = currentProductImages[index];
+    }
+
+    document.querySelectorAll("#modalProductThumbnails .product-thumbnail")
+        .forEach((button, buttonIndex) => {
+            const active = buttonIndex === index;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+}
+
+function changeProductImage(direction) {
+    if (currentProductImages.length < 2) return;
+
+    const total = currentProductImages.length;
+
+    selectProductImage(
+        (currentProductImageIndex + direction + total) % total
+    );
+}
+    
+
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
     const langData = i18n[currentLang] || i18n['es'];
