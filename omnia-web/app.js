@@ -784,14 +784,40 @@ async function syncEbayInventory() {
     }
 }
 
+
+function getPrintifyImages(item) {
+    const images = Array.isArray(item.images) ? item.images : [];
+
+    return images
+        .map(image => {
+            if (typeof image === "string") return image;
+            return image && (image.src || image.url)
+                ? image.src || image.url
+                : "";
+        })
+        .filter((src, index, all) =>
+            src && all.indexOf(src) === index
+        );
+}
+
+function getPrintifyVariantPrice(variant) {
+    if (!variant || variant.price === null || variant.price === undefined) {
+        return null;
+    }
+
+    const price = Number(variant.price);
+
+    if (!Number.isFinite(price) || price <= 0) {
+        return null;
+    }
+
+    return price / 100;
+}
+
 async function loadPrintifyCatalog() {
     try {
         const printifyProducts = (await syncPrintifyProducts())
-            .filter(item => item && item.is_published === true);
-
-        if (!printifyProducts.length) {
-            return;
-        }
+            .filter(item => item && item.id && item.is_published === true);
 
         const existingPrintifyKeys = new Set(
             products
@@ -800,54 +826,56 @@ async function loadPrintifyCatalog() {
         );
 
         const printifyItems = printifyProducts
-            .filter(item => item && item.id)
             .filter(item => !existingPrintifyKeys.has(`printify_${item.id}`))
             .map(item => {
-                const firstImage =
-                    item.images &&
-                    item.images.length > 0 &&
-                    item.images[0].src
-                        ? item.images[0].src
-                        : "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500";
+                const images = getPrintifyImages(item);
 
-                const enabledVariants = Array.isArray(item.variants)
-                    ? item.variants.filter(v => v.enabled !== false)
+                const variants = Array.isArray(item.variants)
+                    ? item.variants.filter(v =>
+                        v &&
+                        v.enabled !== false &&
+                        v.is_enabled !== false &&
+                        v.is_available !== false
+                    )
                     : [];
 
-                const firstVariant =
-                    enabledVariants.length > 0
-                        ? enabledVariants[0]
-                        : item.variants && item.variants.length > 0
-                            ? item.variants[0]
-                            : null;
+                const validVariants = variants
+                    .map(variant => ({
+                        ...variant,
+                        priceUSD: getPrintifyVariantPrice(variant)
+                    }))
+                    .filter(variant => variant.priceUSD !== null);
 
-                const basePriceUSD =
-                    firstVariant && Number.isFinite(Number(firstVariant.price))
-                        ? Number(firstVariant.price) / 100
-                        : 99.99;
+                if (validVariants.length === 0) {
+                    console.warn(
+                        "Producto Printify omitido: no tiene variantes con precio válido.",
+                        item.id
+                    );
+                    return null;
+                }
 
-                const cleanDescription = item.description
-                    ? item.description
-                        .replace(/<[^>]*>?/gm, "")
-                        .replace(/\s+/g, " ")
-                        .trim()
+                const description = typeof item.description === "string"
+                    ? item.description.trim()
                     : "";
 
                 return {
                     id: createPrintifyProductId(String(item.id)),
                     key: `printify_${item.id}`,
-                    priceUSD: basePriceUSD,
+                    priceUSD: validVariants[0].priceUSD,
                     category: getPrintifyCategory(item),
-                    image: firstImage,
+                    image: images[0] || "",
+                    images,
                     titleCustom: item.title || "Producto OMNIA",
-                    descCustom: cleanDescription
-                        ? cleanDescription.substring(0, 180)
-                        : "",
+                    descCustom: description,
                     printifyId: item.id,
                     printifyShopId: item.shop_id || null,
-                    printifyVariants: enabledVariants
+                    printifyVariants: validVariants,
+                    printifyOptions: Array.isArray(item.options)
+                        ? item.options
+                        : []
                 };
-            });
+            })
+            .filter(Boolean);
 
         if (printifyItems.length > 0) {
             products.unshift(...printifyItems);
@@ -860,7 +888,7 @@ async function loadPrintifyCatalog() {
             "productos nuevos."
         );
     } catch (err) {
-        console.log(
+        console.error(
             "Sincronización Printify no disponible:",
             err.message
         );
