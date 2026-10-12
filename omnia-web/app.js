@@ -343,21 +343,61 @@ function changeProductImage(direction) {
 
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
-    const langData = i18n[currentLang] || i18n['es'];
-    const prodLang = langData[selectedProduct.key] || i18n['es'][selectedProduct.key];
-    const productName = selectedProduct.titleCustom || prodLang.name || selectedProduct.key;
-    const productDescription = selectedProduct.descCustom || prodLang.desc || '';
-    const price = (selectedProduct.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    document.getElementById('modalProductImg').src = selectedProduct.image;
-    document.getElementById('modalProductCat').textContent = selectedProduct.category;
-    document.getElementById('modalProductTitle').textContent = productName;
-    document.getElementById('modalProductDesc').textContent = productDescription;
-    document.getElementById('modalProductPrice').textContent = `${symbols[currentCurrency]}${price}`;
-    document.getElementById('modalCulturalTip').innerHTML = countryTraditions[currentCurrency] || countryTraditions['USD'];
-    document.getElementById('productQty').value = 1;
+    if (!selectedProduct) {
+        console.warn("Producto OMNIA no encontrado:", id);
+        return;
+    }
 
-    document.getElementById('productModal').style.display = 'flex';
+    const langData = i18n[currentLang] || i18n["es"];
+    const prodLang = langData[selectedProduct.key] ||
+        (i18n["es"] && i18n["es"][selectedProduct.key]) || {};
+
+    const productName =
+        selectedProduct.titleCustom ||
+        prodLang.name ||
+        selectedProduct.key;
+
+    const productDescription =
+        selectedProduct.descCustom ||
+        prodLang.desc ||
+        "";
+
+    const price = (
+        selectedProduct.priceUSD * rates[currentCurrency]
+    ).toLocaleString("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    renderProductGallery(
+        Array.isArray(selectedProduct.images) &&
+        selectedProduct.images.length
+            ? selectedProduct.images
+            : selectedProduct.image
+                ? [selectedProduct.image]
+                : []
+    );
+
+    document.getElementById("modalProductCat").textContent =
+        selectedProduct.category || "";
+
+    document.getElementById("modalProductTitle").textContent =
+        productName;
+
+    document.getElementById("modalProductDesc").textContent =
+        productDescription;
+
+    document.getElementById("modalProductPrice").textContent =
+        `${symbols[currentCurrency]}${price}`;
+
+    document.getElementById("modalCulturalTip").innerHTML =
+        countryTraditions[currentCurrency] ||
+        countryTraditions["USD"];
+
+    document.getElementById("productQty").value = 1;
+    document.getElementById("productModal").style.display = "flex";
+
     initPayPalButtons();
 }
 
