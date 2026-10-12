@@ -340,7 +340,6 @@ function changeProductImage(direction) {
         (currentProductImageIndex + direction + total) % total
     );
 }
-    
 
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
