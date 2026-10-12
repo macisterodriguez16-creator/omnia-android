@@ -311,6 +311,7 @@ function renderProductGallery(images) {
 
     if (previousButton) previousButton.hidden = !showNavigation;
     if (nextButton) nextButton.hidden = !showNavigation;
+    initializeProductZoom();
 }
 
 function selectProductImage(index) {
@@ -340,6 +341,184 @@ function changeProductImage(direction) {
         (currentProductImageIndex + direction + total) % total
     );
 }
+
+/* =========================================
+   OMNIA — Zoom interactivo de productos
+   ========================================= */
+
+let productZoomLevel = 1;
+let productZoomPointerStart = null;
+
+function openProductZoom() {
+    if (!currentProductImages.length) return;
+
+    const modal = document.getElementById("productZoomModal");
+    const image = document.getElementById("productZoomImage");
+
+    if (!modal || !image) return;
+
+    productZoomLevel = 1;
+    image.style.transform = "scale(1)";
+    image.src = currentProductImages[currentProductImageIndex] || "";
+    image.alt = selectedProduct?.titleCustom || "Imagen ampliada del producto";
+
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+
+    updateProductZoomControls();
+}
+
+function closeProductZoom() {
+    const modal = document.getElementById("productZoomModal");
+    if (!modal) return;
+
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+
+    productZoomLevel = 1;
+    productZoomPointerStart = null;
+
+    const image = document.getElementById("productZoomImage");
+    if (image) {
+        image.style.transform = "scale(1)";
+    }
+}
+
+function updateProductZoomControls() {
+    const resetButton = document.getElementById("productZoomReset");
+    if (resetButton) {
+        resetButton.textContent = `${Math.round(productZoomLevel * 100)}%`;
+    }
+
+    const previous = document.getElementById("productZoomPrev");
+    const next = document.getElementById("productZoomNext");
+    const multipleImages = currentProductImages.length > 1;
+
+    if (previous) previous.hidden = !multipleImages;
+    if (next) next.hidden = !multipleImages;
+}
+
+function setProductZoom(level) {
+    productZoomLevel = Math.max(1, Math.min(4, level));
+
+    const image = document.getElementById("productZoomImage");
+    if (image) {
+        image.style.transform = `scale(${productZoomLevel})`;
+    }
+
+    updateProductZoomControls();
+}
+
+function changeProductZoomImage(direction) {
+    if (currentProductImages.length < 2) return;
+
+    const total = currentProductImages.length;
+
+    currentProductImageIndex =
+        (currentProductImageIndex + direction + total) % total;
+
+    selectProductImage(currentProductImageIndex);
+
+    const image = document.getElementById("productZoomImage");
+    if (image) {
+        image.src = currentProductImages[currentProductImageIndex];
+        image.alt = selectedProduct?.titleCustom || "Imagen ampliada del producto";
+    }
+
+    setProductZoom(1);
+}
+
+function initializeProductZoom() {
+    const mainImage = document.getElementById("modalProductImg");
+    const modal = document.getElementById("productZoomModal");
+
+    if (!mainImage || !modal || modal.dataset.initialized === "true") return;
+
+    modal.dataset.initialized = "true";
+
+    mainImage.style.cursor = "zoom-in";
+    mainImage.addEventListener("click", openProductZoom);
+
+    document.getElementById("productZoomClose")
+        ?.addEventListener("click", closeProductZoom);
+
+    document.getElementById("productZoomIn")
+        ?.addEventListener("click", () => {
+            setProductZoom(productZoomLevel + 0.5);
+        });
+
+    document.getElementById("productZoomOut")
+        ?.addEventListener("click", () => {
+            setProductZoom(productZoomLevel - 0.5);
+        });
+
+    document.getElementById("productZoomReset")
+        ?.addEventListener("click", () => {
+            setProductZoom(1);
+        });
+
+    document.getElementById("productZoomPrev")
+        ?.addEventListener("click", () => {
+            changeProductZoomImage(-1);
+        });
+
+    document.getElementById("productZoomNext")
+        ?.addEventListener("click", () => {
+            changeProductZoomImage(1);
+        });
+
+    modal.addEventListener("click", event => {
+        if (event.target === modal) closeProductZoom();
+    });
+
+    document.addEventListener("keydown", event => {
+        if (modal.hidden) return;
+
+        if (event.key === "Escape") closeProductZoom();
+        if (event.key === "ArrowLeft") changeProductZoomImage(-1);
+        if (event.key === "ArrowRight") changeProductZoomImage(1);
+        if (event.key === "+" || event.key === "=") {
+            setProductZoom(productZoomLevel + 0.5);
+        }
+        if (event.key === "-") {
+            setProductZoom(productZoomLevel - 0.5);
+        }
+    });
+
+    const viewport = document.getElementById("productZoomViewport");
+
+    viewport?.addEventListener("touchstart", event => {
+        if (event.touches.length !== 1) return;
+
+        productZoomPointerStart = {
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY
+        };
+    }, { passive: true });
+
+    viewport?.addEventListener("touchend", event => {
+        if (!productZoomPointerStart || productZoomLevel > 1) {
+            productZoomPointerStart = null;
+            return;
+        }
+
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - productZoomPointerStart.x;
+        const deltaY = touch.clientY - productZoomPointerStart.y;
+
+        if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            changeProductZoomImage(deltaX < 0 ? 1 : -1);
+        }
+
+        productZoomPointerStart = null;
+    }, { passive: true });
+
+    mainImage.addEventListener("error", () => {
+        if (!modal.hidden) closeProductZoom();
+    });
+                }
 
 function getPrintifyVariantOptions(product) {
     const definitions = Array.isArray(product.printifyOptions)
