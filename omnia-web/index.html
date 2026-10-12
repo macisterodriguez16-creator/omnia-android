@@ -274,9 +274,35 @@
             <button class="close-btn" onclick="closeProductModal()">×</button>
 
             <div class="modal-grid">
-                <div class="modal-img-container">
-                    <img id="modalProductImg" src="" alt="Producto OMNIA">
-                </div>
+                
+<div class="modal-img-container" id="modalGalleryContainer">
+    <img id="modalProductImg" src="" alt="Producto OMNIA">
+
+    <button
+        type="button"
+        id="galleryPrev"
+        class="gallery-nav gallery-prev"
+        aria-label="Imagen anterior"
+        onclick="changeProductImage(-1)"
+        hidden
+    >‹</button>
+
+    <button
+        type="button"
+        id="galleryNext"
+        class="gallery-nav gallery-next"
+        aria-label="Imagen siguiente"
+        onclick="changeProductImage(1)"
+        hidden
+    >›</button>
+
+    <div
+        id="modalProductThumbnails"
+        class="product-thumbnails"
+        aria-label="Imágenes del producto"
+    ></div>
+</div>
+                
 
                 <div class="modal-info">
                     <span id="modalProductCat" class="card-cat"></span>
