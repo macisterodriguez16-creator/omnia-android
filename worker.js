@@ -1,3 +1,4 @@
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -27,12 +28,23 @@ export default {
       );
     }
 
-    if (url.pathname === "/admin" || url.pathname === "/admin/") {
+    if (
+      url.pathname === "/admin" ||
+      url.pathname === "/admin/"
+    ) {
+      const adminUrl = new URL("/admin/index.html", url);
+      adminUrl.search = url.search;
+
       return env.ASSETS.fetch(
-        new Request(new URL("/admin/index.html", url), request)
+        new Request(adminUrl, {
+          method: request.method,
+          headers: request.headers,
+          redirect: "manual"
+        })
       );
     }
 
     return env.ASSETS.fetch(request);
   }
 };
+      
