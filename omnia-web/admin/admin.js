@@ -366,25 +366,24 @@ function renderAdminProducts(products) {
                             ${escapeHtml(String(status))}
                         </span>
                     </div>
+                    
+<div class="product-admin-actions">
+    <button
+        class="primary-button"
+        onclick="openProductChannels('${encodeURIComponent(String(id))}')"
+    >
+        Gestionar publicación
+    </button>
 
-                    <div class="product-admin-actions">
-                       <button
-                          class="primary-button"
-                          onclick="openProductChannels('$
-                    {encodeURIComponent(String(id))}')"
-                        >
-                            Gestionar publicación
-                        </button>
-
-                        <button
-                           class="secondary-button 
-                   remove-background-button"
-                           data-product-id="${escapeHtml(String(id))}"
-                           data-image-url="${escapeHtml(image)}"
-                       >
-                           Eliminar fondo
-                       </button>
-                   </div>
+    <button
+        class="secondary-button remove-background-button"
+        data-product-id="${escapeHtml(String(id))}"
+        data-image-url="${escapeHtml(image)}"
+    >
+        Eliminar fondo
+    </button>
+</div>
+            
                 </div>
             `;
         })
@@ -445,7 +444,6 @@ async function removeProductBackground(button) {
             image.src = data.processed_image_url;
         }
 
-        button.dataset.imageUrl = data.processed_image_url;
         button.textContent = "Fondo eliminado";
 
         alert(
