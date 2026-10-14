@@ -703,3 +703,201 @@ button {
         display: none;
     }
 }
+
+/* OMNIA — selector de maqueta */
+.product-mockup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(5px);
+}
+
+.product-mockup-dialog {
+    width: min(100%, 920px);
+    max-height: 92vh;
+    overflow-y: auto;
+    background: #111111;
+    color: #f5f0e6;
+    border: 1px solid #9d7a36;
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+}
+
+.product-mockup-dialog .admin-modal-header,
+.product-mockup-dialog .admin-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-color: rgba(201, 164, 92, 0.28);
+}
+
+.product-mockup-dialog .admin-modal-header h2 {
+    margin: 0;
+    color: #e4c982;
+}
+
+.product-mockup-dialog .admin-modal-body {
+    padding: 20px;
+}
+
+.product-mockup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.product-mockup-option {
+    min-width: 0;
+    padding: 8px;
+    overflow: hidden;
+    color: #f5f0e6;
+    text-align: center;
+    background: #191919;
+    border: 1px solid #38332a;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.product-mockup-option:hover,
+.product-mockup-option:focus-visible {
+    border-color: #c9a45c;
+}
+
+.product-mockup-option.is-selected {
+    background: #272115;
+    border: 2px solid #e4c982;
+    box-shadow: 0 0 0 1px rgba(228, 201, 130, 0.15);
+}
+
+.product-mockup-option img {
+    display: block;
+    width: 100%;
+    height: 170px;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 6px;
+}
+
+.product-mockup-option-label {
+    display: block;
+    margin-top: 10px;
+    color: #e4c982;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.product-mockup-message {
+    margin-top: 14px;
+    color: #e4c982;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+    .product-mockup-overlay {
+        padding: 8px;
+    }
+
+    .product-mockup-dialog {
+        max-height: 95vh;
+    }
+
+    .product-mockup-dialog .admin-modal-header,
+    .product-mockup-dialog .admin-modal-footer,
+    .product-mockup-dialog .admin-modal-body {
+        padding: 12px;
+    }
+
+    .product-mockup-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    .product-mockup-option img {
+        height: 135px;
+    }
+}
+
+
+/* OMNIA: barra lateral contraible */
+body .sidebar {
+    width: 260px !important;
+    transform: translateX(0) !important;
+    transition: width .25s ease !important;
+    overflow-x: hidden;
+}
+body .main-content {
+    margin-left: 260px !important;
+    width: calc(100% - 260px) !important;
+    min-width: 0;
+    transition: margin-left .25s ease, width .25s ease;
+}
+body.sidebar-collapsed .sidebar { width: 76px !important; }
+body.sidebar-collapsed .main-content {
+    margin-left: 76px !important;
+    width: calc(100% - 76px) !important;
+}
+body.sidebar-collapsed .brand-name,
+body.sidebar-collapsed .brand-subtitle,
+body.sidebar-collapsed .nav-title,
+body.sidebar-collapsed .nav-item > span:not(.nav-icon),
+body.sidebar-collapsed .store-link span:not(:first-child) {
+    display: none !important;
+}
+body.sidebar-collapsed .sidebar-brand,
+body.sidebar-collapsed .sidebar-bottom {
+    padding-left: 4px;
+    padding-right: 4px;
+}
+body.sidebar-collapsed .brand-mark { font-size: 34px; }
+body.sidebar-collapsed .nav-item,
+body.sidebar-collapsed .store-link {
+    justify-content: center;
+}
+body.sidebar-collapsed .nav-item {
+    padding-left: 0;
+    padding-right: 0;
+}
+.menu-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    cursor: pointer;
+}
+@media (max-width: 800px) {
+    body .sidebar { max-width: 78vw; z-index: 100; }
+    body .main-content,
+    body .topbar { min-width: 0; }
+}
+
+/* Botón de expandir/contraer siempre visible */
+.menu-toggle {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative;
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    color: #e4c982 !important;
+    background: #171717 !important;
+    border: 1px solid #c9a45c !important;
+    border-radius: 8px;
+    font-size: 22px;
+    cursor: pointer;
+}

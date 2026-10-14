@@ -5,6 +5,7 @@ const sections = document.querySelectorAll(".admin-section");
 const pageTitle = document.getElementById("pageTitle");
 const sidebar = document.getElementById("sidebar");
 const menuToggle = document.getElementById("menuToggle");
+const adminApp = document.body;
 
 const sectionTitles = {
     dashboard: "Dashboard",
@@ -147,10 +148,24 @@ document.querySelectorAll("[data-section-action]").forEach(button => {
     });
 });
 
+function updateSidebarToggle() {
+    if (!menuToggle || !adminApp) return;
+    const collapsed = adminApp.classList.contains("sidebar-collapsed");
+    menuToggle.textContent = collapsed ? "☰" : "‹";
+    menuToggle.setAttribute("aria-label", collapsed ? "Expandir barra lateral" : "Contraer barra lateral");
+    menuToggle.setAttribute("aria-expanded", String(!collapsed));
+}
+
+if (window.innerWidth <= 800) {
+    adminApp.classList.add("sidebar-collapsed");
+}
+
 if (menuToggle) {
     menuToggle.addEventListener("click", () => {
-        sidebar.classList.toggle("open");
+        adminApp.classList.toggle("sidebar-collapsed");
+        updateSidebarToggle();
     });
+    updateSidebarToggle();
 }
 
 async function loadDashboardStats() {
@@ -304,17 +319,25 @@ function renderAdminProducts(products) {
                 product.name ||
                 "Producto sin nombre";
 
-            let image = "";
+            let image =
+    product.main_image_url ||
+    product.image_url ||
+    product.imageUrl ||
+    "";
 
-            if (product.image) {
-                image =
-                    typeof product.image === "string"
-                        ? product.image
-                        : product.image.src ||
-                          product.image.url ||
-                          "";
-            }
-            
+const imageValue = product.image;
+
+if (!image && imageValue) {
+    image =
+        typeof imageValue === "string"
+            ? imageValue
+            : imageValue.src ||
+              imageValue.url ||
+              imageValue.preview_url ||
+              imageValue.preview ||
+              "";
+}
+
 if (!image && Array.isArray(product.images)) {
     const firstImage = product.images[0];
 
@@ -324,6 +347,8 @@ if (!image && Array.isArray(product.images)) {
         image =
             firstImage.src ||
             firstImage.url ||
+            firstImage.preview_url ||
+            firstImage.preview ||
             "";
     }
 }
@@ -340,7 +365,7 @@ if (!image && product.payload) {
             })()
             : product.payload;
 
-    const images = Array.isArray(payload.images)
+    const images = Array.isArray(payload?.images)
         ? payload.images
         : [];
 
@@ -358,11 +383,13 @@ if (!image && product.payload) {
         image =
             selectedImage.src ||
             selectedImage.url ||
+            selectedImage.preview_url ||
+            selectedImage.preview ||
             "";
     }
-}          
+}
 
-            const price =
+              const price =
                 product.price ??
                 product.sale_price ??
                 product.salePrice ??
@@ -416,8 +443,13 @@ if (!image && product.payload) {
     >
         Eliminar fondo
     </button>
+    <button
+        class="secondary-button product-mockup-button"
+        onclick="openProductMockup('${encodeURIComponent(String(id))}')"
+    >
+        Elegir maqueta
+    </button>
 </div>
-            
                 </div>
             `;
         })
@@ -771,6 +803,161 @@ function closeProductChannels() {
     }
 }
 
+
+async function openProductMockup(encodedProductId) {
+    const productId = decodeURIComponent(encodedProductId);
+
+    if (!requestAdminSecret()) return;
+
+    try {
+        const response = await adminFetch(
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/mockup`
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || data.message || `HTTP ${response.status}`);
+        }
+
+        renderProductMockup(productId, data);
+    } catch (error) {
+        console.error("Error cargando maquetas:", error);
+        alert(`No se pudieron cargar las imágenes del producto.\n\n${error.message}`);
+    }
+}
+
+function renderProductMockup(productId, data) {
+    closeProductMockup();
+
+    const images = Array.isArray(data.images) ? data.images : [];
+    const mainImageUrl = data.main_image_url || "";
+
+    const modal = document.createElement("div");
+    modal.id = "productMockupModal";
+    modal.className = "admin-modal-overlay product-mockup-overlay";
+
+    const cards = images.map((image, index) => {
+        const url = typeof image === "string"
+            ? image
+            : image.src || image.url || image.preview_url || image.preview || "";
+
+        if (!url || !/^https?:\/\//i.test(url)) return "";
+
+        const selected = url === mainImageUrl;
+        const safeUrl = escapeHtml(url);
+
+        return `
+            <button type="button"
+                class="product-mockup-option${selected ? " is-selected" : ""}"
+                data-mockup-url="${safeUrl}"
+                aria-pressed="${selected ? "true" : "false"}">
+                <img src="${safeUrl}" alt="Maqueta ${index + 1}" loading="lazy">
+                <span class="product-mockup-option-label">
+                    ${selected ? "✓ Imagen principal" : "Elegir como principal"}
+                </span>
+            </button>
+        `;
+    }).join("");
+
+    modal.innerHTML = `
+        <div class="admin-modal-content product-mockup-dialog" role="dialog"
+            aria-modal="true" aria-labelledby="productMockupTitle">
+            <div class="admin-modal-header">
+                <h2 id="productMockupTitle">Elegir maqueta</h2>
+                <button type="button" class="secondary-button"
+                    data-mockup-close aria-label="Cerrar">Cerrar</button>
+            </div>
+            <div class="admin-modal-body">
+                <p>Selecciona la imagen que aparecerá primero en OMNIA.</p>
+                ${
+                    cards
+                        ? `<div class="product-mockup-grid">${cards}</div>`
+                        : `<p>No se encontraron imágenes válidas para este producto.</p>`
+                }
+                <p class="product-mockup-message" aria-live="polite"></p>
+            </div>
+            <div class="admin-modal-footer">
+                <button type="button" class="secondary-button"
+                    data-mockup-close>Cancelar</button>
+                <button type="button" class="primary-button"
+                    data-mockup-save ${cards ? "" : "disabled"}>Guardar imagen principal</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelectorAll("[data-mockup-close]").forEach(button => {
+        button.addEventListener("click", closeProductMockup);
+    });
+
+    modal.addEventListener("click", event => {
+        if (event.target === modal) closeProductMockup();
+    });
+
+    modal.querySelectorAll(".product-mockup-option").forEach(button => {
+        button.addEventListener("click", () => {
+            modal.querySelectorAll(".product-mockup-option").forEach(option => {
+                const isSelected = option === button;
+                option.classList.toggle("is-selected", isSelected);
+                option.setAttribute("aria-pressed", String(isSelected));
+                option.querySelector(".product-mockup-option-label").textContent =
+                    isSelected ? "✓ Imagen principal" : "Elegir como principal";
+            });
+
+            const message = modal.querySelector(".product-mockup-message");
+            if (message) message.textContent = "";
+        });
+    });
+
+    modal.querySelector("[data-mockup-save]").addEventListener("click", async event => {
+        const saveButton = event.currentTarget;
+        const selected = modal.querySelector(".product-mockup-option.is-selected");
+        const message = modal.querySelector(".product-mockup-message");
+
+        if (!selected) {
+            message.textContent = "Selecciona una imagen antes de guardar.";
+            return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.textContent = "Guardando…";
+
+        try {
+            const response = await adminFetch(
+                `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/mockup`,
+                {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        main_image_url: selected.dataset.mockupUrl
+                    })
+                }
+            );
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(result.error || result.message || `HTTP ${response.status}`);
+            }
+
+            closeProductMockup();
+            alert("Imagen principal guardada correctamente.");
+            await loadAdminProducts();
+        } catch (error) {
+            console.error("Error guardando la maqueta:", error);
+            message.textContent = `No se pudo guardar: ${error.message}`;
+            saveButton.disabled = false;
+            saveButton.textContent = "Guardar imagen principal";
+        }
+    });
+}
+
+function closeProductMockup() {
+    const modal = document.getElementById("productMockupModal");
+    if (modal) modal.remove();
+}
+
 function renderRecentProducts(products) {
     const container = document.getElementById(
         "recentProducts"
@@ -803,14 +990,22 @@ function renderRecentProducts(products) {
                 product.name ||
                 "Producto sin nombre";
 
-            let image = "";
+            let image =
+                product.main_image_url ||
+                product.image_url ||
+                product.imageUrl ||
+                "";
 
-            if (product.image) {
+            const imageValue = product.image;
+
+            if (!image && imageValue) {
                 image =
-                    typeof product.image === "string"
-                        ? product.image
-                        : product.image.src ||
-                          product.image.url ||
+                    typeof imageValue === "string"
+                        ? imageValue
+                        : imageValue.src ||
+                          imageValue.url ||
+                          imageValue.preview_url ||
+                          imageValue.preview ||
                           "";
             }
 
@@ -823,6 +1018,8 @@ function renderRecentProducts(products) {
                     image =
                         firstImage.src ||
                         firstImage.url ||
+                        firstImage.preview_url ||
+                        firstImage.preview ||
                         "";
                 }
             }

@@ -4,14 +4,7 @@ const siteConfig = {
     paypalClientId: "sb"
 };
 
-const products = [
-    { id: 1, key: 'p1', priceUSD: 149.99, category: 'Moda', image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500' },
-    { id: 2, key: 'p2', priceUSD: 119.99, category: 'Calzado', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500' },
-    { id: 3, key: 'p3', priceUSD: 199.99, category: 'Accesorios', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500' },
-    { id: 4, key: 'p4', priceUSD: 280.00, category: 'Arte', image: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=500' },
-    { id: 5, key: 'p5', priceUSD: 89.99, category: 'Accesorios', image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500' },
-    { id: 6, key: 'p6', priceUSD: 79.99, category: 'Moda', image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500' }
-];
+const products = [];
 
 const rates = { 
     USD: 1, EUR: 0.92, GBP: 0.79, CAD: 1.35, MXN: 17.1, 
@@ -224,7 +217,7 @@ function renderProducts(items) {
         const price = (p.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return `
             <div class="card" onclick="openProductModal(${p.id})">
-                <img src="${p.image}" alt="${productName}">
+                ${p.image ? `<img src="${p.image}" alt="${productName}" loading="lazy">` : ""}
                 <div class="card-body">
                     <div class="card-cat">${p.category}</div>
                     <div class="card-title">${productName}</div>
