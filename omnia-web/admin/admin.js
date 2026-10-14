@@ -314,19 +314,53 @@ function renderAdminProducts(products) {
                           product.image.url ||
                           "";
             }
+            
+if (!image && Array.isArray(product.images)) {
+    const firstImage = product.images[0];
 
-            if (!image && Array.isArray(product.images)) {
-                const firstImage = product.images[0];
+    if (typeof firstImage === "string") {
+        image = firstImage;
+    } else if (firstImage) {
+        image =
+            firstImage.src ||
+            firstImage.url ||
+            "";
+    }
+}
 
-                if (typeof firstImage === "string") {
-                    image = firstImage;
-                } else if (firstImage) {
-                    image =
-                        firstImage.src ||
-                        firstImage.url ||
-                        "";
+if (!image && product.payload) {
+    const payload =
+        typeof product.payload === "string"
+            ? (() => {
+                try {
+                    return JSON.parse(product.payload);
+                } catch {
+                    return {};
                 }
-            }
+            })()
+            : product.payload;
+
+    const images = Array.isArray(payload.images)
+        ? payload.images
+        : [];
+
+    const selectedImage =
+        images.find(img =>
+            img &&
+            typeof img === "object" &&
+            img.is_default === true &&
+            (img.src || img.url)
+        ) || images[0];
+
+    if (typeof selectedImage === "string") {
+        image = selectedImage;
+    } else if (selectedImage) {
+        image =
+            selectedImage.src ||
+            selectedImage.url ||
+            "";
+    }
+}          
 
             const price =
                 product.price ??
