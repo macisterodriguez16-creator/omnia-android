@@ -368,18 +368,96 @@ function renderAdminProducts(products) {
                     </div>
 
                     <div class="product-admin-actions">
-                        <button
-                            class="primary-button"
-                            onclick="openProductChannels('${encodeURIComponent(String(id))}')"
+                       <button
+                          class="primary-button"
+                          onclick="openProductChannels('$
+                    {encodeURIComponent(String(id))}')"
                         >
                             Gestionar publicación
                         </button>
-                    </div>
 
+                        <button
+                           class="secondary-button 
+                   remove-background-button"
+                           data-product-id="${escapeHtml(String(id))}"
+                           data-image-url="${escapeHtml(image)}"
+                       >
+                           Eliminar fondo
+                       </button>
+                   </div>
                 </div>
             `;
         })
         .join("");
+}
+
+async function removeProductBackground(button) {
+    const productId = button.dataset.productId;
+    const imageUrl = button.dataset.imageUrl;
+
+    if (!productId || !imageUrl) {
+        alert("No se encontró la imagen original del producto.");
+        return;
+    }
+
+    if (!requestAdminSecret()) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        "¿Eliminar el fondo de esta imagen?\n\n" +
+        "La imagen original de Printify se conservará."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Procesando imagen...";
+
+    try {
+        const response = await adminFetch(
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/remove-background`,
+            {
+                method: "POST",
+                headers: getAdminHeaders(true),
+                body: JSON.stringify({
+                    image_url: imageUrl
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || data.status !== "success" ||
+            !data.processed_image_url) {
+            throw new Error(
+                data.message || `Error HTTP ${response.status}`
+            );
+        }
+
+        const card = button.closest(".product-admin-card");
+        const image = card?.querySelector(".product-admin-image img");
+
+        if (image) {
+            image.src = data.processed_image_url;
+        }
+
+        button.dataset.imageUrl = data.processed_image_url;
+        button.textContent = "Fondo eliminado";
+
+        alert(
+            "Imagen procesada y guardada en Cloudinary."
+        );
+    } catch (error) {
+        console.error("Error eliminando el fondo:", error);
+        alert(`No se pudo procesar la imagen.\n\n${error.message}`);
+        button.textContent = originalText;
+    } finally {
+        button.disabled = false;
+    }
 }
 
 async function openProductChannels(encodedProductId) {
@@ -742,6 +820,16 @@ function renderRecentProducts(products) {
         })
         .join("");
 }
+
+document.addEventListener("click", event => {
+    const button = event.target.closest(
+        ".remove-background-button"
+    );
+
+    if (button) {
+        removeProductBackground(button);
+    }
+});
 
 function escapeHtml(value) {
     return String(value ?? "")
