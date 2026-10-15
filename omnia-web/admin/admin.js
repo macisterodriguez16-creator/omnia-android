@@ -495,13 +495,16 @@ async function removeProductBackground(button) {
         );
 
         const data = await response.json();
-
-        if (!response.ok || data.status !== "success" ||
+        
+if (!response.ok || data.status !== "success" ||
             !data.processed_image_url) {
             throw new Error(
-                data.message || `Error HTTP ${response.status}`
+                [
+                    data.message || `Error HTTP ${response.status}`,
+                    data.detail ? `Detalle: ${data.detail}` : ""
+                ].filter(Boolean).join("\n")
             );
-        }
+}      
 
         const card = button.closest(".product-admin-card");
         const image = card?.querySelector(".product-admin-image img");
