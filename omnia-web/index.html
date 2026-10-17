@@ -165,11 +165,14 @@
         </div>
 
         <div class="filter-bar">
-            <button class="cat-btn active" onclick="filterCategory('Todos')">Todos</button>
-            <button class="cat-btn" onclick="filterCategory('Moda')">Moda</button>
-            <button class="cat-btn" onclick="filterCategory('Calzado')">Calzado</button>
-            <button class="cat-btn" onclick="filterCategory('Accesorios')">Accesorios</button>
-            <button class="cat-btn" onclick="filterCategory('Arte')">Arte impreso</button>
+            <button class="cat-btn active" data-category="Todo" onclick="filterCategory('Todo')">Todo</button>
+            <button class="cat-btn" data-category="Ropa de hombre" onclick="filterCategory('Ropa de hombre')">Ropa de hombre</button>
+            <button class="cat-btn" data-category="Ropa de mujer" onclick="filterCategory('Ropa de mujer')">Ropa de mujer</button>
+            <button class="cat-btn" data-category="Ropa de niños" onclick="filterCategory('Ropa de niños')">Ropa de niños</button>
+            <button class="cat-btn" data-category="Calzado de hombre" onclick="filterCategory('Calzado de hombre')">Calzado de hombre</button>
+            <button class="cat-btn" data-category="Calzado de mujer" onclick="filterCategory('Calzado de mujer')">Calzado de mujer</button>
+            <button class="cat-btn" data-category="Accesorios" onclick="filterCategory('Accesorios')">Accesorios</button>
+            <button class="cat-btn" data-category="Cuadros impresos" onclick="filterCategory('Cuadros impresos')">Cuadros impresos</button>
         </div>
 
         <div class="grid" id="productGrid"></div>
@@ -367,6 +370,8 @@
                     <span>Total</span>
                     <strong id="cartTotal">$0.00</strong>
                 </div>
+
+                <div id="paypalCartButtonContainer" class="paypal-cart-button"></div>
 
                 <div class="checkout-methods">
 

@@ -286,6 +286,176 @@ async function loadAdminProducts() {
     }
 }
 
+
+function renderTopPublicationPanel(products) {
+    let panel = document.getElementById("topProductPublicationPanel");
+
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "topProductPublicationPanel";
+        panel.className = "top-product-publication-panel";
+        const container = document.querySelector(".admin-products-container");
+        if (!container || !container.parentNode) return;
+        container.parentNode.insertBefore(panel, container);
+    }
+
+    const list = Array.isArray(products) ? products : [];
+    const options = list.map(product => {
+        const id = String(
+            product.printify_id || product.printifyId || product.id || ""
+        );
+        const title = String(product.title || product.name || "Producto sin nombre");
+        return `<option value="${escapeHtml(id)}">${escapeHtml(title)} — ${escapeHtml(id)}</option>`;
+    }).join("");
+
+    const previous = panel.querySelector("#topPublicationProductSelect");
+    const previousId = previous ? previous.value : "";
+
+    panel.innerHTML = `
+        <h3>PUBLICACIÓN POR CANAL</h3>
+        <label class="top-publication-product-label" for="topPublicationProductSelect">
+            Producto
+        </label>
+        <select id="topPublicationProductSelect"
+                onchange="loadTopProductChannels()"
+                ${list.length ? "" : "disabled"}>
+            ${options || '<option value="">No hay productos disponibles</option>'}
+        </select>
+        <div class="product-channel-panel">
+            <div class="product-channel-sidebar-title">CANALES DE VENTA</div>
+            <div class="product-channel-list">
+                ${channels.map(channel => `
+                    <label class="product-channel-option">
+                        <input type="checkbox"
+                               class="top-product-channel-checkbox"
+                               data-channel="${escapeHtml(channel.id)}">
+                        <span class="channel-option-content">
+                            ${escapeHtml(channel.name)}
+                        </span>
+                    </label>
+                `).join("")}
+            </div>
+        </div>
+        <div class="product-channel-save">
+            <button class="primary-button"
+                    type="button"
+                    onclick="saveTopProductChannels()"
+                    ${list.length ? "" : "disabled"}>
+                Guardar publicación
+            </button>
+        </div>
+        <p id="topPublicationMessage" role="status" aria-live="polite"></p>
+    `;
+
+    const selector = panel.querySelector("#topPublicationProductSelect");
+    if (previousId && list.some(product =>
+        String(product.printify_id || product.printifyId || product.id || "") === previousId
+    )) {
+        selector.value = previousId;
+    }
+
+    if (selector.value) {
+        loadTopProductChannels();
+    }
+}
+
+async function loadTopProductChannels() {
+    const selector = document.getElementById("topPublicationProductSelect");
+    const panel = document.getElementById("topProductPublicationPanel");
+    if (!selector || !panel || !selector.value) return;
+    if (!requestAdminSecret()) return;
+
+    const productId = selector.value;
+    const message = document.getElementById("topPublicationMessage");
+    if (message) message.textContent = "Cargando publicación…";
+
+    try {
+        const response = await adminFetch(
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        const savedChannels = data.channels || data.canales || data.items || [];
+        const savedMap = {};
+
+        savedChannels.forEach(item => {
+            const channelId = item.channel || item.id;
+            if (channelId) savedMap[channelId] = item;
+        });
+
+        if (selector.value !== productId) return;
+
+        panel.querySelectorAll(".top-product-channel-checkbox").forEach(input => {
+            const saved = savedMap[input.dataset.channel];
+            input.checked = !!(
+                saved &&
+                Number(saved.enabled) === 1 &&
+                saved.status === "published"
+            );
+        });
+
+        if (message) message.textContent = "Publicación cargada.";
+    } catch (error) {
+        if (message) message.textContent = `No se pudo cargar: ${error.message}`;
+    }
+}
+
+async function saveTopProductChannels() {
+    const selector = document.getElementById("topPublicationProductSelect");
+    const panel = document.getElementById("topProductPublicationPanel");
+    const message = document.getElementById("topPublicationMessage");
+
+    if (!selector || !selector.value || !panel) {
+        if (message) message.textContent = "Selecciona un producto primero.";
+        return;
+    }
+    if (!requestAdminSecret()) return;
+
+    const productId = selector.value;
+    const checkboxes = Array.from(
+        panel.querySelectorAll(".top-product-channel-checkbox")
+    );
+
+    try {
+        if (message) message.textContent = "Guardando publicación…";
+
+        for (const input of checkboxes) {
+            const channel = input.dataset.channel;
+            const baseUrl =
+                `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`;
+
+            if (input.checked) {
+                const response = await adminFetch(baseUrl, {
+                    method: "POST",
+                    headers: getAdminHeaders(true),
+                    body: JSON.stringify({ channel })
+                });
+                if (!response.ok) throw new Error(`Error al publicar en ${channel}: HTTP ${response.status}`);
+            } else {
+                const response = await adminFetch(
+                    `${baseUrl}/${encodeURIComponent(channel)}`,
+                    { method: "DELETE", headers: getAdminHeaders(false) }
+                );
+                if (!response.ok && response.status !== 404) {
+                    throw new Error(`Error al retirar ${channel}: HTTP ${response.status}`);
+                }
+            }
+        }
+
+        if (message) message.textContent = "Publicación guardada correctamente.";
+        window.alert("Publicación actualizada correctamente.");
+        await loadTopProductChannels();
+
+        if (typeof loadDashboardStats === "function") {
+            loadDashboardStats();
+        }
+    } catch (error) {
+        if (message) message.textContent = `No se pudo guardar: ${error.message}`;
+        window.alert(`No se pudo guardar la publicación.\n${error.message}`);
+    }
+}
+
 function renderAdminProducts(products) {
     const container = document.querySelector(
         ".admin-products-container"
@@ -294,6 +464,9 @@ function renderAdminProducts(products) {
     if (!container) {
         return;
     }
+
+    renderTopPublicationPanel(products);
+
 
     if (!products || products.length === 0) {
         container.innerHTML = `
@@ -437,12 +610,12 @@ if (!image && product.payload) {
     </button>
 
     <button
-        class="secondary-button remove-background-button"
-        data-product-id="${escapeHtml(String(id))}"
-        data-image-url="${escapeHtml(image)}"
+        class="secondary-button omnia-withdraw-button"
+        onclick="withdrawProductFromOmnia('${encodeURIComponent(String(id))}')"
     >
-        Eliminar fondo
+        Retirar de OMNIA
     </button>
+
     <button
         class="secondary-button product-mockup-button"
         onclick="openProductMockup('${encodeURIComponent(String(id))}')"
@@ -456,71 +629,46 @@ if (!image && product.payload) {
         .join("");
 }
 
-async function removeProductBackground(button) {
-    const productId = button.dataset.productId;
-    const imageUrl = button.dataset.imageUrl;
 
-    if (!productId || !imageUrl) {
-        alert("No se encontró la imagen original del producto.");
+
+
+async function withdrawProductFromOmnia(encodedProductId) {
+    const productId = decodeURIComponent(encodedProductId);
+
+    if (!window.confirm(
+        "¿Retirar este producto de la tienda OMNIA?\n\n" +
+        "El producto seguirá en el catálogo y en Printify. " +
+        "Las publicaciones en otros canales no se modificarán."
+    )) {
         return;
     }
 
-    if (!requestAdminSecret()) {
-        return;
-    }
-
-    const confirmed = window.confirm(
-        "¿Eliminar el fondo de esta imagen?\n\n" +
-        "La imagen original de Printify se conservará."
-    );
-
-    if (!confirmed) {
-        return;
-    }
-
-    const originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = "Procesando imagen...";
+    if (!requestAdminSecret()) return;
 
     try {
         const response = await adminFetch(
-            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/remove-background`,
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels/omnia`,
             {
-                method: "POST",
-                headers: getAdminHeaders(true),
-                body: JSON.stringify({
-                    image_url: imageUrl
-                })
+                method: "DELETE",
+                headers: getAdminHeaders(false)
             }
         );
 
-        const data = await response.json();
-
-        if (!response.ok || data.status !== "success" ||
-            !data.processed_image_url) {
-            throw new Error(
-                data.message || `Error HTTP ${response.status}`
-            );
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
 
-        const card = button.closest(".product-admin-card");
-        const image = card?.querySelector(".product-admin-image img");
+        window.alert("El producto se retiró de la tienda OMNIA.");
 
-        if (image) {
-            image.src = data.processed_image_url;
+        await loadAdminProducts();
+
+        if (typeof loadDashboardStats === "function") {
+            loadDashboardStats();
         }
-
-        button.textContent = "Fondo eliminado";
-
-        alert(
-            "Imagen procesada y guardada en Cloudinary."
-        );
     } catch (error) {
-        console.error("Error eliminando el fondo:", error);
-        alert(`No se pudo procesar la imagen.\n\n${error.message}`);
-        button.textContent = originalText;
-    } finally {
-        button.disabled = false;
+        window.alert(
+            "No se pudo retirar el producto de OMNIA.\n" + error.message
+        );
     }
 }
 
@@ -529,6 +677,20 @@ async function openProductChannels(encodedProductId) {
 
     if (!requestAdminSecret()) {
         return;
+    }
+
+    // Sincronizar el producto seleccionado en el panel superior.
+    const topSelector = document.getElementById("topPublicationProductSelect");
+
+    if (topSelector) {
+        const hasProduct = Array.from(topSelector.options).some(
+            option => option.value === productId
+        );
+
+        if (hasProduct) {
+            topSelector.value = productId;
+            await loadTopProductChannels();
+        }
     }
 
     try {
@@ -615,7 +777,7 @@ function renderProductChannels(productId, savedChannels) {
                     <strong>${escapeHtml(String(productId))}</strong>
                 </div>
 
-                <div class="product-channel-list">
+                <div class="product-channel-panel"><div class="product-channel-sidebar-title">CANALES DE VENTA</div><div class="product-channel-list">
 
                     ${channels
                         .map(channel => {
@@ -664,7 +826,15 @@ function renderProductChannels(productId, savedChannels) {
                         })
                         .join("")}
 
+                </div></div>
+
+                <div class="product-channel-save">
+                    <button class="primary-button"
+                        onclick="saveProductChannels('${encodeURIComponent(productId)}')">
+                        Guardar publicación
+                    </button>
                 </div>
+
 
             </div>
 
@@ -677,12 +847,7 @@ function renderProductChannels(productId, savedChannels) {
                     Cancelar
                 </button>
 
-                <button
-                    class="primary-button"
-                    onclick="saveProductChannels('${encodeURIComponent(productId)}')"
-                >
-                    Guardar publicación
-                </button>
+
 
             </div>
 
@@ -1049,16 +1214,6 @@ function renderRecentProducts(products) {
         })
         .join("");
 }
-
-document.addEventListener("click", event => {
-    const button = event.target.closest(
-        ".remove-background-button"
-    );
-
-    if (button) {
-        removeProductBackground(button);
-    }
-});
 
 function escapeHtml(value) {
     return String(value ?? "")

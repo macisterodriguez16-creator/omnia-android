@@ -219,7 +219,7 @@ function renderProducts(items) {
             <div class="card" onclick="openProductModal(${p.id})">
                 ${p.image ? `<img src="${p.image}" alt="${productName}" loading="lazy">` : ""}
                 <div class="card-body">
-                    <div class="card-cat">${p.category}</div>
+                    <div class="card-cat">${getProductAudienceCategory(p) || getPrintifyCategory(p) || p.category || "Accesorios"}</div>
                     <div class="card-title">${productName}</div>
                     <div class="card-price">${symbols[currentCurrency]}${price}</div>
                     <button class="add-btn" onclick="event.stopPropagation(); addToCart(${p.id})">${langData.addBtn}</button>
@@ -260,6 +260,7 @@ function changeCurrency() {
 }
 
 let currentProductImages = [];
+let currentProductZoomAlt = "";
 let currentProductImageIndex = 0;
 
 function renderProductGallery(images) {
@@ -341,24 +342,39 @@ function changeProductImage(direction) {
 
 let productZoomLevel = 1;
 let productZoomPointerStart = null;
+let productZoomPanX = 0;
+let productZoomPanY = 0;
+let productZoomPointers = new Map();
+let productZoomGesture = null;
 
-function openProductZoom() {
+
+
+function openProductZoom(images, altText) {
+    if (Array.isArray(images) && images.length) {
+        currentProductImages = images.filter(Boolean);
+        currentProductImageIndex = 0;
+    }
+
     if (!currentProductImages.length) return;
 
     const modal = document.getElementById("productZoomModal");
     const image = document.getElementById("productZoomImage");
-
     if (!modal || !image) return;
 
     productZoomLevel = 1;
-    image.style.transform = "scale(1)";
+    productZoomPanX = 0;
+    productZoomPanY = 0;
+    currentProductZoomAlt =
+        altText || selectedProduct?.titleCustom ||
+        "Imagen ampliada del producto";
+
     image.src = currentProductImages[currentProductImageIndex] || "";
-    image.alt = selectedProduct?.titleCustom || "Imagen ampliada del producto";
+    applyProductZoomTransform();
+    image.alt = currentProductZoomAlt;
 
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-
     updateProductZoomControls();
 }
 
@@ -371,6 +387,10 @@ function closeProductZoom() {
     document.body.style.overflow = "";
 
     productZoomLevel = 1;
+    productZoomPanX = 0;
+    productZoomPanY = 0;
+    productZoomPointers.clear();
+    productZoomGesture = null;
     productZoomPointerStart = null;
 
     const image = document.getElementById("productZoomImage");
@@ -393,14 +413,31 @@ function updateProductZoomControls() {
     if (next) next.hidden = !multipleImages;
 }
 
-function setProductZoom(level) {
-    productZoomLevel = Math.max(1, Math.min(4, level));
 
+function applyProductZoomTransform() {
     const image = document.getElementById("productZoomImage");
-    if (image) {
-        image.style.transform = `scale(${productZoomLevel})`;
+    const viewport = document.getElementById("productZoomViewport");
+    if (!image || !viewport) return;
+
+    if (productZoomLevel <= 1) {
+        productZoomPanX = 0;
+        productZoomPanY = 0;
+    } else {
+        const maxX = Math.max(0,
+            (image.offsetWidth * productZoomLevel - viewport.clientWidth) / 2);
+        const maxY = Math.max(0,
+            (image.offsetHeight * productZoomLevel - viewport.clientHeight) / 2);
+        productZoomPanX = Math.max(-maxX, Math.min(maxX, productZoomPanX));
+        productZoomPanY = Math.max(-maxY, Math.min(maxY, productZoomPanY));
     }
 
+    image.style.transform =
+        `translate3d(${productZoomPanX}px, ${productZoomPanY}px, 0) scale(${productZoomLevel})`;
+}
+
+function setProductZoom(level) {
+    productZoomLevel = Math.max(1, Math.min(4, level));
+    applyProductZoomTransform();
     updateProductZoomControls();
 }
 
@@ -417,7 +454,7 @@ function changeProductZoomImage(direction) {
     const image = document.getElementById("productZoomImage");
     if (image) {
         image.src = currentProductImages[currentProductImageIndex];
-        image.alt = selectedProduct?.titleCustom || "Imagen ampliada del producto";
+        image.alt = currentProductZoomAlt || selectedProduct?.titleCustom || "Imagen ampliada del producto";
     }
 
     setProductZoom(1);
@@ -480,158 +517,179 @@ function initializeProductZoom() {
         }
     });
 
+
     const viewport = document.getElementById("productZoomViewport");
 
-    viewport?.addEventListener("touchstart", event => {
-        if (event.touches.length !== 1) return;
+    viewport?.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        event.preventDefault();
+        viewport.setPointerCapture?.(event.pointerId);
+        productZoomPointers.set(event.pointerId, {
+            x: event.clientX, y: event.clientY
+        });
 
-        productZoomPointerStart = {
-            x: event.touches[0].clientX,
-            y: event.touches[0].clientY
-        };
-    }, { passive: true });
+        const points = Array.from(productZoomPointers.values());
+        if (points.length >= 2) {
+            const a = points[0], b = points[1];
+            productZoomGesture = {
+                type: "pinch",
+                distance: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+                zoom: productZoomLevel,
+                panX: productZoomPanX, panY: productZoomPanY,
+                midX: (a.x + b.x) / 2, midY: (a.y + b.y) / 2
+            };
+        } else {
+            productZoomGesture = {
+                type: "pan",
+                startX: event.clientX, startY: event.clientY,
+                panX: productZoomPanX, panY: productZoomPanY,
+                zoom: productZoomLevel
+            };
+        }
+    });
 
-    viewport?.addEventListener("touchend", event => {
-        if (!productZoomPointerStart || productZoomLevel > 1) {
-            productZoomPointerStart = null;
-            return;
+    viewport?.addEventListener("pointermove", event => {
+        if (!productZoomPointers.has(event.pointerId)) return;
+        event.preventDefault();
+        productZoomPointers.set(event.pointerId, {
+            x: event.clientX, y: event.clientY
+        });
+
+        const points = Array.from(productZoomPointers.values());
+        if (points.length >= 2 && productZoomGesture?.type === "pinch") {
+            const a = points[0], b = points[1];
+            const distance = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+            const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+            productZoomLevel = Math.max(1, Math.min(4,
+                productZoomGesture.zoom * distance / productZoomGesture.distance));
+            productZoomPanX = productZoomGesture.panX + midX - productZoomGesture.midX;
+            productZoomPanY = productZoomGesture.panY + midY - productZoomGesture.midY;
+            applyProductZoomTransform();
+            updateProductZoomControls();
+        } else if (points.length === 1 && productZoomGesture?.type === "pan"
+                   && productZoomGesture.zoom > 1) {
+            productZoomPanX = productZoomGesture.panX + event.clientX - productZoomGesture.startX;
+            productZoomPanY = productZoomGesture.panY + event.clientY - productZoomGesture.startY;
+            applyProductZoomTransform();
+        }
+    });
+
+    function finishProductZoomPointer(event) {
+        const gesture = productZoomGesture;
+        const startX = gesture?.startX, startY = gesture?.startY;
+        productZoomPointers.delete(event.pointerId);
+        productZoomGesture = null;
+
+        if (gesture?.type === "pan" && gesture.zoom <= 1 &&
+            Number.isFinite(startX) &&
+            Math.abs(event.clientX - startX) > 60 &&
+            Math.abs(event.clientX - startX) > Math.abs(event.clientY - startY)) {
+            changeProductZoomImage(event.clientX < startX ? 1 : -1);
         }
 
-        const touch = event.changedTouches[0];
-        const deltaX = touch.clientX - productZoomPointerStart.x;
-        const deltaY = touch.clientY - productZoomPointerStart.y;
-
-        if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY)) {
-            changeProductZoomImage(deltaX < 0 ? 1 : -1);
+        const remaining = Array.from(productZoomPointers.values());
+        if (remaining.length === 1) {
+            const point = remaining[0];
+            productZoomGesture = {
+                type: "pan", startX: point.x, startY: point.y,
+                panX: productZoomPanX, panY: productZoomPanY,
+                zoom: productZoomLevel
+            };
+        } else if (remaining.length >= 2) {
+            const a = remaining[0], b = remaining[1];
+            productZoomGesture = {
+                type: "pinch",
+                distance: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+                zoom: productZoomLevel,
+                panX: productZoomPanX, panY: productZoomPanY,
+                midX: (a.x + b.x) / 2, midY: (a.y + b.y) / 2
+            };
         }
+    }
 
-        productZoomPointerStart = null;
-    }, { passive: true });
-
+    viewport?.addEventListener("pointerup", finishProductZoomPointer);
+    viewport?.addEventListener("pointercancel", finishProductZoomPointer);
     mainImage.addEventListener("error", () => {
         if (!modal.hidden) closeProductZoom();
     });
                 }
 
-function getPrintifyVariantOptions(product) {
-    const definitions = Array.isArray(product.printifyOptions)
-        ? product.printifyOptions
-        : [];
-
-    return definitions.map((definition, index) => {
-        const values = Array.isArray(definition.values)
-            ? definition.values
-            : [];
-
-        return {
-            index,
-            name: definition.title || definition.name || `Opción ${index + 1}`,
-            values: values.map(value => {
-                if (typeof value === "object" && value !== null) {
-                    return {
-                        id: String(value.id ?? value.value ?? ""),
-                        label: String(value.title ?? value.name ?? value.value ?? "")
-                    };
-                }
-
-                return {
-                    id: String(value),
-                    label: String(value)
-                };
-            }).filter(value => value.id && value.label)
-        };
-    }).filter(option => option.values.length > 0);
-}
-
-function renderProductVariants(product) {
-    const container = document.getElementById("modalProductVariants");
-    if (!container) return;
-
-    const definitions = getPrintifyVariantOptions(product);
-
-    if (!definitions.length) {
-        container.innerHTML = "";
-        return;
-    }
-
-    container.innerHTML = definitions.map(definition => `
-        <label class="variant-field">
-            <span>${definition.name}</span>
-            <select
-                class="variant-select"
-                data-option-index="${definition.index}"
-                aria-label="${definition.name}"
-            >
-                ${definition.values.map(value => `
-                    <option value="${value.id}">${value.label}</option>
-                `).join("")}
-            </select>
-        </label>
-    `).join("");
-}
-
-let selectedPrintifyVariant = null;
 
 function getPrintifyVariantOptions(product) {
-    const definitions = Array.isArray(product.printifyOptions)
-        ? product.printifyOptions
-        : [];
+    const definitions = Array.isArray(product?.printifyOptions)
+        ? product.printifyOptions : [];
+    const variants = Array.isArray(product?.printifyVariants)
+        ? product.printifyVariants : [];
+
+    const candidatesOf = value => {
+        if (value === undefined || value === null) return [];
+        if (typeof value !== "object") return [String(value)];
+        return [
+            value.id, value.value, value.title,
+            value.label, value.name
+        ].filter(v => v !== undefined && v !== null).map(String);
+    };
+
+    const availableValues = new Set();
+    variants.forEach(variant => {
+        const options = Array.isArray(variant.options) ? variant.options : [];
+        options.forEach(value =>
+            candidatesOf(value).forEach(candidate =>
+                availableValues.add(candidate)
+            )
+        );
+        [1, 2, 3].forEach(index =>
+            candidatesOf(variant[`option${index}`]).forEach(candidate =>
+                availableValues.add(candidate)
+            )
+        );
+    });
 
     return definitions.map((definition, index) => {
         const values = Array.isArray(definition.values)
             ? definition.values
             : Array.isArray(definition.valores)
-                ? definition.valores
-                : [];
+                ? definition.valores : [];
+
+        const normalizedValues = values.map(value => {
+            if (value && typeof value === "object") {
+                return {
+                    id: String(value.id ?? value.value ?? value.title ?? ""),
+                    label: String(
+                        value.title ?? value.name ?? value.label ??
+                        value.value ?? value.id ?? ""
+                    )
+                };
+            }
+            return { id: String(value), label: String(value) };
+        }).filter(value => value.id && value.label);
+
+        const filteredValues = normalizedValues.filter(value =>
+            availableValues.has(value.id) ||
+            availableValues.has(value.label)
+        );
 
         return {
             index,
-            name:
-                definition.title ||
-                definition.name ||
-                definition.título ||
-                definition.nombre ||
+            name: definition.title || definition.name ||
+                definition.título || definition.nombre ||
                 `Opción ${index + 1}`,
-            values: values.map(value => {
-                if (value && typeof value === "object") {
-                    const id = value.id ?? value.value ?? "";
-                    const label =
-                        value.title ??
-                        value.name ??
-                        value.título ??
-                        value.nombre ??
-                        value.value ??
-                        "";
-
-                    return {
-                        id: String(id),
-                        label: String(label)
-                    };
-                }
-
-                return {
-                    id: String(value),
-                    label: String(value)
-                };
-            }).filter(value => value.id && value.label)
+            values: availableValues.size ? filteredValues : normalizedValues
         };
     }).filter(option => option.values.length > 0);
 }
+
+
 
 function renderProductVariants(product) {
     const container = document.getElementById("modalProductVariants");
     if (!container) return;
 
-    const variants = Array.isArray(product.printifyVariants)
-        ? product.printifyVariants
-        : [];
-
+    const variants = Array.isArray(product?.printifyVariants)
+        ? product.printifyVariants : [];
     const definitions = getPrintifyVariantOptions(product);
-
     selectedPrintifyVariant =
-        variants.find(variant => variant.is_default === true) ||
-        variants[0] ||
-        null;
+        variants.find(v => v.is_default === true) || variants[0] || null;
 
     if (!definitions.length || !selectedPrintifyVariant) {
         container.innerHTML = "";
@@ -641,174 +699,161 @@ function renderProductVariants(product) {
     container.innerHTML = definitions.map(definition => `
         <label class="variant-field">
             <span>${definition.name}</span>
-            <select
-                class="variant-select"
+            <select class="variant-select"
                 data-option-index="${definition.index}"
-                aria-label="${definition.name}"
-            >
-                ${definition.values.map(value => `
-                    <option value="${value.id}">${value.label}</option>
-                `).join("")}
+                aria-label="${definition.name}">
+                ${definition.values.map(value =>
+                    `<option value="${value.id}">${value.label}</option>`
+                ).join("")}
             </select>
         </label>
     `).join("");
 
-    const selects = container.querySelectorAll(".variant-select");
+    const candidatesOf = value => {
+        if (value === undefined || value === null) return [];
+        if (typeof value !== "object") return [String(value)];
+        return [
+            value.id, value.value, value.title,
+            value.label, value.name
+        ].filter(v => v !== undefined && v !== null).map(String);
+    };
 
-    selects.forEach(select => {
+    const initialValues = [
+        ...(Array.isArray(selectedPrintifyVariant.options)
+            ? selectedPrintifyVariant.options : []),
+        selectedPrintifyVariant.option1,
+        selectedPrintifyVariant.option2,
+        selectedPrintifyVariant.option3
+    ].flatMap(candidatesOf);
+
+    container.querySelectorAll(".variant-select").forEach(select => {
+        const index = Number(select.dataset.optionIndex || 0);
+        const definition = definitions.find(d => d.index === index);
+        const match = definition?.values.find(value =>
+            initialValues.includes(String(value.id)) ||
+            initialValues.includes(String(value.label))
+        );
+        if (match) select.value = match.id;
         select.addEventListener("change", handlePrintifyVariantChange);
-    });
-
-    const initialOptions = Array.isArray(selectedPrintifyVariant.options)
-        ? selectedPrintifyVariant.options
-        : [];
-
-    selects.forEach((select, index) => {
-        const optionId = initialOptions[index];
-
-        if (
-            optionId !== undefined &&
-            Array.from(select.options).some(
-                option => option.value === String(optionId)
-            )
-        ) {
-            select.value = String(optionId);
-        }
     });
 
     handlePrintifyVariantChange();
 }
 
+
+
 function handlePrintifyVariantChange() {
     if (!selectedProduct) return;
 
     const variants = Array.isArray(selectedProduct.printifyVariants)
-        ? selectedProduct.printifyVariants
-        : [];
-
+        ? selectedProduct.printifyVariants : [];
+    const definitions = getPrintifyVariantOptions(selectedProduct);
     const selects = Array.from(
-        document.querySelectorAll(
-            "#modalProductVariants .variant-select"
-        )
+        document.querySelectorAll("#modalProductVariants .variant-select")
     );
 
-    const selectedOptions = selects.map(select => select.value);
+    const candidatesOf = value => {
+        if (value === undefined || value === null) return [];
+        if (typeof value !== "object") return [String(value)];
+        return [
+            value.id, value.value, value.title,
+            value.label, value.name
+        ].filter(v => v !== undefined && v !== null).map(String);
+    };
+
+    const chosenValues = selects.map(select => {
+        const index = Number(select.dataset.optionIndex || 0);
+        const definition = definitions.find(d => d.index === index);
+        const chosen = definition?.values.find(
+            value => String(value.id) === String(select.value)
+        );
+        return chosen
+            ? [String(chosen.id), String(chosen.label)]
+            : [String(select.value)];
+    });
 
     const match = variants.find(variant => {
-        if (!Array.isArray(variant.options)) return false;
+        if (!selects.length) return false;
 
-        return selectedOptions.every((value, index) =>
-            String(variant.options[index]) === String(value)
+        const rawOptions = Array.isArray(variant.options)
+            ? variant.options : [];
+        const variantValues = [
+            ...rawOptions,
+            variant.option1, variant.option2, variant.option3
+        ].flatMap(candidatesOf);
+
+        return chosenValues.every(accepted =>
+            accepted.some(value => variantValues.includes(value))
         );
     });
 
     if (!match) {
         selectedPrintifyVariant = null;
-        document.getElementById("modalProductPrice").textContent =
-            "Combinación no disponible";
+        const price = document.getElementById("modalProductPrice");
+        if (price) price.textContent = "Combinación no disponible";
         return;
     }
 
-    selectedPrintifyVariant = match;
+    updateSelectedPrintifyVariant(match);
+}
 
-    const priceUSD = Number.isFinite(Number(match.priceUSD))
-        ? Number(match.priceUSD)
-        : Number(match.price) / 100;
 
-    if (!Number.isFinite(priceUSD) || priceUSD <= 0) {
-        document.getElementById("modalProductPrice").textContent =
-            "Precio no disponible";
-        return;
-    }
-
-    const price = (
-        priceUSD * rates[currentCurrency]
-    ).toLocaleString("es-ES", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-
-    document.getElementById("modalProductPrice").textContent =
-        `${symbols[currentCurrency]}${price}`;
-                    }
-
-function handlePrintifyVariantChange() {
-    if (!selectedProduct) return;
-
-    const variants = Array.isArray(selectedProduct.printifyVariants)
-        ? selectedProduct.printifyVariants
+function getPrintifyImagesForVariant(product, variant) {
+    const allImages = Array.isArray(product?.images)
+        ? product.images.filter(src => typeof src === "string" && src.trim())
         : [];
+    const records = Array.isArray(product?.printifyImageVariants)
+        ? product.printifyImageVariants
+        : [];
+    if (!variant || !records.length) return allImages;
 
-    const definitions = getPrintifyVariantOptions(selectedProduct);
+    const variantId = String(variant.id ?? "");
+    const matchingImages = records
+        .filter(image =>
+            Array.isArray(image.variant_ids) &&
+            image.variant_ids.some(id => String(id) === variantId)
+        )
+        .map(image => image.src)
+        .filter(src => typeof src === "string" && src.trim());
 
-    const selects = document.querySelectorAll(
-        "#modalProductVariants .variant-select"
-    );
+    return matchingImages.length
+        ? [...new Set(matchingImages)]
+        : allImages;
+}
 
-    const selectedValues = Array.from(selects).map(select => ({
-        index: Number(select.dataset.optionIndex),
-        value: select.value
-    }));
-
-    const match = variants.find(variant => {
-        return selectedValues.every(selection => {
-            const definition = definitions.find(
-                option => option.index === selection.index
-            );
-
-            if (!definition) return true;
-
-            const variantOption = Array.isArray(variant.options)
-                ? variant.options.find(option =>
-                    String(option.name) === String(definition.name) ||
-                    String(option.id) === String(definition.id)
-                )
-                : null;
-
-            if (variantOption) {
-                return String(
-                    variantOption.value ?? variantOption.id ?? ""
-                ) === selection.value;
-            }
-
-            const optionValue = variant[
-                `option${selection.index + 1}`
-            ];
-
-            return optionValue === undefined ||
-                String(optionValue) === selection.value;
-        });
-    });
-
-    if (match) {
-        selectedPrintifyVariant = match;
-        updateSelectedPrintifyVariant(match);
-    }
+function updateProductGalleryForVariant(variant) {
+    if (!selectedProduct) return;
+    const images = getPrintifyImagesForVariant(selectedProduct, variant);
+    if (images.length) renderProductGallery(images);
 }
 
 function updateSelectedPrintifyVariant(variant) {
     if (!variant || !selectedProduct) return;
 
+    selectedPrintifyVariant = variant;
+    updateProductGalleryForVariant(variant);
+
+    const priceElement = document.getElementById("modalProductPrice");
     const priceUSD = Number.isFinite(Number(variant.priceUSD))
         ? Number(variant.priceUSD)
         : Number(variant.price) / 100;
 
     if (!Number.isFinite(priceUSD) || priceUSD <= 0) {
-        document.getElementById("modalProductPrice").textContent =
-            "Precio no disponible";
+        if (priceElement) priceElement.textContent = "Precio no disponible";
         return;
     }
 
-    const price = (
-        priceUSD * rates[currentCurrency]
-    ).toLocaleString("es-ES", {
+    const rate = Number(rates[currentCurrency]);
+    const converted = priceUSD * (Number.isFinite(rate) ? rate : 1);
+    const formatted = converted.toLocaleString("es-ES", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
 
-    document.getElementById("modalProductPrice").textContent =
-        `${symbols[currentCurrency]}${price}`;
-        }
+    if (priceElement) {
+        priceElement.textContent = `${symbols[currentCurrency]}${formatted}`;
+    }
+}
 
 function openProductModal(id) {
     selectedProduct = products.find(p => p.id === id);
@@ -913,8 +958,14 @@ function addModalToCart() {
             return;
         }
 
+        const variantImages = getPrintifyImagesForVariant(
+            selectedProduct, selectedPrintifyVariant
+        );
+
         productToAdd = {
             ...selectedProduct,
+            image: variantImages[0] || selectedProduct.image || "",
+            images: variantImages.length ? variantImages : selectedProduct.images,
             priceUSD: variantPrice,
             selectedVariant: { ...selectedPrintifyVariant },
             cartVariantTitle: selectedPrintifyVariant.title || ""
@@ -945,7 +996,13 @@ function initPayPalButtons() {
             style: { layout: 'horizontal', color: 'gold', shape: 'pill', label: 'pay' },
             createOrder: (data, actions) => {
                 const qty = parseInt(document.getElementById('productQty').value) || 1;
-                const convertedAmount = (selectedProduct.priceUSD * qty * rates[currentCurrency]).toFixed(2);
+                const unitPrice = selectedProduct.printifyVariants?.length && selectedPrintifyVariant
+                    ? Number(selectedPrintifyVariant.priceUSD)
+                    : Number(selectedProduct.priceUSD);
+                if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+                    throw new Error("El precio de la variante seleccionada no es válido.");
+                }
+                const convertedAmount = (unitPrice * qty * rates[currentCurrency]).toFixed(2);
                 return actions.order.create({
                     purchase_units: [{
                         description: selectedProduct.key,
@@ -989,6 +1046,61 @@ function initPayPalButtons() {
             }).render('#paypalOtherPaymentContainer');
         }
     }
+}
+
+function initCartPayPalButton() {
+    const container = document.getElementById("paypalCartButtonContainer");
+    if (!container || typeof paypal === "undefined") return;
+
+    container.innerHTML = "";
+    if (!cart.length) return;
+
+    paypal.Buttons({
+        style: {
+            layout: "vertical",
+            color: "gold",
+            shape: "rect",
+            label: "checkout"
+        },
+        createOrder: (data, actions) => {
+            const totalUSD = cart.reduce(
+                (sum, item) => sum + (Number(item.priceUSD) || 0), 0
+            );
+
+            if (!Number.isFinite(totalUSD) || totalUSD <= 0) {
+                throw new Error("El total del carrito no es válido.");
+            }
+
+            return actions.order.create({
+                purchase_units: [{
+                    description: "Compra en OMNIA Marketplace",
+                    amount: {
+                        currency_code: "USD",
+                        value: totalUSD.toFixed(2)
+                    }
+                }]
+            });
+        },
+        onApprove: (data, actions) => {
+            return actions.order.capture().then(details => {
+                cart = [];
+                updateCartUI();
+
+                const modal = document.getElementById("cartModal");
+                if (modal) modal.style.display = "none";
+
+                const payer = details.payer?.name?.given_name || "cliente";
+                alert(
+                    `¡Gracias por tu compra, ${payer}! ` +
+                    `Orden: ${details.id}`
+                );
+            });
+        },
+        onError: error => {
+            console.error("OMNIA PayPal:", error);
+            alert("No se pudo completar el pago con PayPal. Inténtalo de nuevo.");
+        }
+    }).render("#paypalCartButtonContainer");
 }
 
 function openOtherPaymentsModal() {
@@ -1132,11 +1244,101 @@ function closePolicyModal() {
     document.getElementById('policyModal').style.display = 'none';
 }
 
+
+function getProductAudienceCategory(product) {
+    const tags = Array.isArray(product.tags)
+        ? product.tags
+        : Array.isArray(product.etiquetas)
+            ? product.etiquetas
+            : [];
+
+    const text = [
+        product.titleCustom || "",
+        product.title || "",
+        product.name || "",
+        product.description || "",
+        product.descCustom || "",
+        product.key || "",
+        product.audienceCategory || "",
+        ...tags
+    ].join(" ").toLowerCase()
+     .normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "");
+
+    const category = String(product.category || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const all = category + " " + text;
+
+    const footwear =
+        /calzado|sandalia|sandal|shoe|sneaker|trainer|boot|clog|slipper|loafer|heel|chancla|flip flop/.test(all);
+
+    const kids =
+        /\b(kids?|children|toddler|youth|infant|baby|ninos?|ninas?|infantil|bebe|bebes)\b/.test(text);
+
+    const women =
+        /\b(womens?|ladies|female|mujer|mujeres|femenina|femenino)\b/.test(text);
+
+    const men =
+        /\b(mens?|male|hombre|hombres|masculina|masculino)\b/.test(text);
+
+    if (footwear) {
+        if (kids) return "";
+        if (women) return "Calzado de mujer";
+        if (men) return "Calzado de hombre";
+        return "";
+    }
+
+    const clothing =
+        /\b(ropa|moda|apparel|shirt|hoodie|jacket|pullover|sweatshirt|dress|top|tee|pants|shorts|leggings|swimwear|skirt|blouse|camiseta|sudadera|chaqueta|pantalon|pantalones|vestido|falda|blusa)\b/.test(all);
+
+    if (!clothing) return "";
+    if (kids) return "Ropa de niños";
+    if (women) return "Ropa de mujer";
+    if (men) return "Ropa de hombre";
+    return "";
+}
+
 function filterCategory(cat) {
-    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    if (cat === 'Todos') renderProducts(products);
-    else renderProducts(products.filter(p => p.category === cat));
+    const category = String(cat || "").toLowerCase();
+
+    document.querySelectorAll(".cat-btn").forEach(button => {
+        button.classList.toggle(
+            "active",
+            String(button.getAttribute("data-category") || "").toLowerCase() === category
+        );
+    });
+
+    if (category === "todo" || category === "todos") {
+        renderProducts(products);
+        return;
+    }
+
+    const filtered = products.filter(product => {
+        const base = String(product.category || "").toLowerCase();
+        const audience = getProductAudienceCategory(product).toLowerCase();
+
+        if ([
+            "ropa de hombre", "ropa de mujer", "ropa de niños",
+            "calzado de hombre", "calzado de mujer"
+        ].includes(category)) {
+            return audience === category;
+        }
+
+        if (["cuadros impresos", "arte impreso", "arte"].includes(category)) {
+            return ["arte", "arte impreso", "cuadros impresos"].includes(base);
+        }
+
+        if (["accesorios", "accesorio"].includes(category)) {
+            return ["accesorios", "accesorio"].includes(base) || getPrintifyCategory(product).toLowerCase() === "accesorios";
+        }
+
+        return base === category;
+    });
+
+    renderProducts(filtered);
 }
 
 function filterProducts() {
@@ -1151,38 +1353,136 @@ function filterProducts() {
 }
 
 function addToCart(id) {
-    const item = products.find(p => p.id === id);
-    cart.push(item);
+    const item = products.find(p => String(p.id) === String(id));
+    if (!item) return;
+
+    const variants = Array.isArray(item.printifyVariants)
+        ? item.printifyVariants
+        : [];
+
+    if (variants.length > 0) {
+        openProductModal(item.id);
+        return;
+    }
+
+    cart.push({ ...item });
     updateCartUI();
 }
 
 function updateCartUI() {
-    document.getElementById("cartCount").textContent = cart.length;
+    const count = document.getElementById("cartCount");
     const cartItems = document.getElementById("cartItems");
-    const langData = i18n[currentLang] || i18n["es"];
-    const totalUSD = cart.reduce((sum, p) => sum + p.priceUSD, 0);
-    const totalConverted = (totalUSD * rates[currentCurrency]).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const totalElement = document.getElementById("cartTotal");
+    if (!cartItems || !totalElement) return;
 
-    if (cart.length === 0) {
-        cartItems.innerHTML = `<div class="cart-empty">Tu carrito está vacío.</div>`;
+    if (count) count.textContent = cart.length;
+
+    const langData = i18n[currentLang] || i18n["es"];
+    const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;",
+        '"': "&quot;", "'": "&#39;"
+    })[char]);
+
+    const money = value => (
+        Number(value || 0) * rates[currentCurrency]
+    ).toLocaleString("es-ES", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    const totalUSD = cart.reduce(
+        (sum, product) => sum + (Number(product.priceUSD) || 0), 0
+    );
+
+    if (!cart.length) {
+        cartItems.innerHTML = '<div class="cart-empty">Tu carrito está vacío.</div>';
     } else {
-        cartItems.innerHTML = cart.map((p, index) => {
-            const prodLang = langData[p.key] || i18n["es"][p.key];
-        const productName = p.titleCustom || prodLang.name || p.key;
-            const price = (p.priceUSD * rates[currentCurrency]).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cartItems.innerHTML = cart.map((product, index) => {
+            const translation = langData[product.key] ||
+                (i18n["es"] && i18n["es"][product.key]) || {};
+            const name = product.titleCustom || translation.name ||
+                product.name || product.key || "Producto OMNIA";
+
+            const image = product.image ||
+                (Array.isArray(product.images) ? product.images[0] : "") || "";
+
+            const variant = product.selectedVariant;
+            const definitions = Array.isArray(product.printifyOptions)
+                ? product.printifyOptions : [];
+            const options = variant && Array.isArray(variant.options)
+                ? variant.options : [];
+
+            const optionLabels = options.map((option, optionIndex) => {
+                const definition = definitions[optionIndex] || {};
+                const optionName = option && typeof option === "object"
+                    ? (option.name || definition.title || definition.name || "")
+                    : (definition.title || definition.name || "");
+
+                let optionValue = option && typeof option === "object"
+                    ? (option.value ?? option.title ?? option.name ?? option.id ?? "")
+                    : option;
+
+                const values = Array.isArray(definition.values)
+                    ? definition.values : [];
+                const matchingValue = values.find(value => {
+                    const id = value && typeof value === "object"
+                        ? (value.id ?? value.value) : value;
+                    return String(id) === String(optionValue);
+                });
+
+                if (matchingValue !== undefined) {
+                    optionValue = matchingValue && typeof matchingValue === "object"
+                        ? (matchingValue.title ?? matchingValue.name ??
+                           matchingValue.value ?? matchingValue.id)
+                        : matchingValue;
+                }
+
+                return optionValue !== undefined && optionValue !== null &&
+                    String(optionValue).trim()
+                    ? `${optionName || "Opción"}: ${optionValue}`
+                    : "";
+            }).filter(Boolean);
+
+            const variantTitle = optionLabels.length
+                ? optionLabels.join(" · ")
+                : (product.cartVariantTitle ||
+                   (variant && variant.title) || "");
+
             return `
                 <div class="cart-item-row">
+                    ${image ? `
+                        <img class="cart-item-image"
+                             src="${escapeHTML(image)}"
+                             alt="${escapeHTML(name)}"
+                             loading="lazy"
+                             onerror="this.style.display='none'">
+                    ` : ""}
                     <div class="cart-item-info">
-                        <span class="cart-item-name">${prodLang.name}</span>
-                        <span class="cart-item-price">${symbols[currentCurrency]}${price}</span>
+                        <span class="cart-item-name">${escapeHTML(name)}</span>
+                        ${variantTitle ? `
+                            <span class="cart-item-variant">
+                                ${escapeHTML(variantTitle)}
+                            </span>
+                        ` : ""}
+                        <span class="cart-item-quantity">Cantidad: 1</span>
+                        <span class="cart-item-price">
+                            ${escapeHTML(symbols[currentCurrency])}${money(product.priceUSD)}
+                        </span>
                     </div>
-                    <button type="button" class="cart-remove-btn" onclick="removeFromCart(${index})">Eliminar</button>
+                    <button type="button" class="cart-remove-btn"
+                            onclick="removeFromCart(${index})">Eliminar</button>
                 </div>
             `;
         }).join("");
     }
 
-    document.getElementById("cartTotal").textContent = `${symbols[currentCurrency]}${totalConverted}`;
+    totalElement.textContent =
+        `${symbols[currentCurrency]}${money(totalUSD)}`;
+
+    const cartModal = document.getElementById("cartModal");
+    if (cartModal && cartModal.style.display === "flex") {
+        initCartPayPalButton();
+    }
 }
 
 function removeFromCart(index) {
@@ -1192,9 +1492,13 @@ function removeFromCart(index) {
 }
 
 function toggleCart() {
-    const modal = document.getElementById('cartModal');
-    modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    const modal = document.getElementById("cartModal");
+    if (!modal) return;
 
+    const opening = modal.style.display !== "flex";
+    modal.style.display = opening ? "flex" : "none";
+
+    if (opening) initCartPayPalButton();
 }
 
 window.toggleSidebar = function () {
@@ -1272,50 +1576,49 @@ document.addEventListener('DOMContentLoaded', () => {
 const OMNIA_API_BACKEND = "https://omnia-api.macisterodriguez16.workers.dev";
 
 function getPrintifyCategory(item) {
-    const text = `${item.title || ""} ${item.description || ""}`.toLowerCase();
+const tags = Array.isArray(item.tags)
+? item.tags
+: Array.isArray(item.etiquetas)
+? item.etiquetas
+: [];
 
-    if (
-        text.includes("canvas") ||
-        text.includes("poster") ||
-        text.includes("print") ||
-        text.includes("wall art") ||
-        text.includes("art print") ||
-        text.includes("framed art") ||
-        text.includes("framed canvas")
-    ) {
-        return "Arte impreso";
-    }
+const text = [
+    item.titleCustom || "",
+    item.title || "",
+    item.name || "",
+    item.description || "",
+    item.descCustom || "",
+    ...tags
+].join(" ").toLowerCase()
+ .normalize("NFD")
+ .replace(/[\u0300-\u036f]/g, "");
 
-    if (
-        text.includes("sneaker") ||
-        text.includes("shoe") ||
-        text.includes("sandal") ||
-        text.includes("clog") ||
-        text.includes("boot") ||
-        text.includes("slide")
-    ) {
-        return "Calzado";
-    }
-
-    if (
-        text.includes("shirt") ||
-        text.includes("hoodie") ||
-        text.includes("jacket") ||
-        text.includes("pullover") ||
-        text.includes("sweatshirt") ||
-        text.includes("dress") ||
-        text.includes("top") ||
-        text.includes("tee") ||
-        text.includes("pants") ||
-        text.includes("shorts") ||
-        text.includes("leggings") ||
-        text.includes("swimwear") ||
-        text.includes("apparel")
-    ) {
-        return "Moda";
-    }
-
+if (
+    /steering wheel|wheel cover|funda para volante|volante de coche|car accessory|desk mat|mouse pad|mousepad|alfombrilla|tapete de escritorio/.test(text)
+) {
     return "Accesorios";
+}
+
+if (
+    /\b(canvas|poster|wall art|art print|framed art|framed canvas|cuadro impreso|cuadros impresos|lamina decorativa|laminas decorativas)\b/.test(text)
+) {
+    return "Arte impreso";
+}
+
+if (
+    /\b(calzado|sneaker|shoe|sandal|sandalia|chancla|clog|boot|slide|loafer|zapatillas|zapato|zapatos)\b/.test(text)
+) {
+    return "Calzado";
+}
+
+if (
+    /\b(ropa|apparel|shirt|hoodie|jacket|pullover|sweatshirt|dress|top|tee|pants|shorts|leggings|swimwear|skirt|blouse|camiseta|sudadera|chaqueta|pantalon|vestido|falda|blusa)\b/.test(text)
+) {
+    return "Ropa";
+}
+
+return "Accesorios";
+
 }
 
 function createPrintifyProductId(printifyId) {
@@ -1409,9 +1712,11 @@ async function syncEbayInventory() {
 
 
 function getPrintifyImages(item) {
-    const images = Array.isArray(item.images) ? item.images : [];
+    const sourceImages = Array.isArray(item?.images)
+        ? item.images
+        : (item?.image ? [item.image] : []);
 
-    return images
+    return sourceImages
         .map(image => {
             if (typeof image === "string") return image;
             return image && (image.src || image.url)
@@ -1419,7 +1724,7 @@ function getPrintifyImages(item) {
                 : "";
         })
         .filter((src, index, all) =>
-            src && all.indexOf(src) === index
+            typeof src === "string" && src.trim() && all.indexOf(src) === index
         );
 }
 
@@ -1486,8 +1791,29 @@ async function loadPrintifyCatalog() {
                     key: `printify_${item.id}`,
                     priceUSD: validVariants[0].priceUSD,
                     category: getPrintifyCategory(item),
+                    audienceCategory: getProductAudienceCategory(item),
+                    tags: Array.isArray(item.tags)
+                        ? item.tags
+                        : Array.isArray(item.etiquetas)
+                            ? item.etiquetas
+                            : [],
                     image: images[0] || "",
                     images,
+                    printifyImageVariants: (
+                        Array.isArray(item.images)
+                            ? item.images
+                            : (item.image ? [item.image] : [])
+                    ).map(image => {
+                        if (typeof image === "string") {
+                            return { src: image, variant_ids: [] };
+                        }
+                        return {
+                            src: image && (image.src || image.url)
+                                ? (image.src || image.url) : "",
+                            variant_ids: image && Array.isArray(image.variant_ids)
+                                ? image.variant_ids : []
+                        };
+                    }).filter(image => image.src),
                     titleCustom: item.title || "Producto OMNIA",
                     descCustom: description,
                     printifyId: item.id,
@@ -1517,6 +1843,18 @@ async function loadPrintifyCatalog() {
         );
     }
 }
+
+
+document.addEventListener("click", event => {
+    const img = event.target.closest(".cart-item-image");
+    if (!img) return;
+
+    event.preventDefault();
+    const source = img.currentSrc || img.src;
+    if (!source) return;
+
+    openProductZoom([source], img.alt || "Imagen del producto");
+});
 
 document.addEventListener("DOMContentLoaded", () => {
     loadPrintifyCatalog();

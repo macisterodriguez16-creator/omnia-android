@@ -1931,3 +1931,147 @@ input[type="submit"] {
     }
     }
     
+
+
+/* OMNIA CART DETAILS */
+.cart-item-row {
+    align-items: center;
+}
+
+.cart-item-image {
+    width: 76px;
+    height: 88px;
+    flex: 0 0 76px;
+    object-fit: contain;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+}
+
+.cart-item-variant,
+.cart-item-quantity {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.cart-item-variant {
+    color: var(--gold-light);
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+@media (max-width: 480px) {
+    .cart-item-row {
+        gap: 10px;
+    }
+
+    .cart-item-image {
+        width: 58px;
+        height: 70px;
+        flex-basis: 58px;
+    }
+}
+
+
+
+/* OMNIA VARIANT + CART PAYPAL FIX */
+#modalProductVariants,
+#modalProductVariants label,
+#modalProductVariants span,
+#modalProductVariants .variant-field,
+#modalProductVariants .variant-field label {
+    color: #fff;
+}
+
+#modalProductVariants .variant-select {
+    width: 100%;
+    color: #fff;
+    background-color: #151515;
+    border: 1px solid var(--border);
+    padding: 11px 12px;
+    appearance: auto;
+}
+
+#modalProductVariants .variant-select option {
+    color: #fff;
+    background-color: #151515;
+}
+
+#paypalCartButtonContainer {
+    width: 100%;
+    margin: 14px 0;
+}
+
+#paypalCartButtonContainer:empty {
+    display: none;
+}
+
+/* Imágenes del carrito un poco más grandes */
+.cart-item-image {
+    width: 96px;
+    height: 110px;
+    flex: 0 0 96px;
+    object-fit: contain;
+}
+
+@media (max-width: 480px) {
+    .cart-item-image {
+        width: 76px;
+        height: 90px;
+        flex-basis: 76px;
+    }
+}
+
+
+/* OMNIA: imágenes del carrito algo mayores y ampliables */
+.cart-item-image {
+    width: 110px;
+    height: 125px;
+    flex: 0 0 110px;
+    object-fit: contain;
+    cursor: zoom-in;
+}
+
+@media (max-width: 600px) {
+    .cart-item-image {
+        width: 84px;
+        height: 96px;
+        flex-basis: 84px;
+    }
+}
+
+
+/* OMNIA: imagen ampliada desplazable con dedo o ratón */
+#productZoomViewport {
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: contain;
+}
+#productZoomImage {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    transform-origin: center center;
+    will-change: transform;
+    cursor: grab;
+}
+#productZoomImage:active {
+    cursor: grabbing;
+}
+
+
+/* OMNIA category filter wrapping */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.filter-bar .cat-btn {
+    max-width: 100%;
+    white-space: normal;
+}
