@@ -1,0 +1,1165 @@
+const PRINTIFY_API_BASE = "https://api.printify.com/v1";
+
+function getImageUrl(image) {
+  let rawUrl = "";
+
+  if (typeof image === "string") {
+    rawUrl = image.trim();
+  } else if (image && typeof image === "object") {
+    const candidates = [
+      image.src,
+      image.url,
+      image.preview_url,
+      image.preview,
+      image.original_image,
+      image.original,
+      image.image,
+    ];
+
+    const found = candidates.find(
+      (value) => typeof value === "string" && value.trim().length > 0
+    );
+    if (found) {
+      rawUrl = found.trim();
+    }
+  }
+
+  if (/^https?:\/\/\S+$/i.test(rawUrl)) {
+    return rawUrl;
+  }
+
+  return "";
+}
+
+function normalizeMockupImages(images) {
+  if (!Array.isArray(images)) {
+    return [];
+  }
+
+  return images
+    .map((image, index) => {
+      const src = getImageUrl(image);
+
+      if (!src) {
+        return null;
+      }
+
+      return {
+        ...(typeof image === "object" && image !== null ? image : {}),
+        id: image?.id ?? `mockup-${index}`,
+        src,
+      };
+    })
+    .filter(Boolean);
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Admin-Secret, X-Pfy-Signature, X-Printify-Signature",
+    };
+
+    const jsonHeaders = {
+      "Content-Type": "application/json; charset=utf-8",
+      ...corsHeaders,
+    };
+
+    const json = (data, status = 200) =>
+      new Response(JSON.stringify(data), {
+        status,
+        headers: jsonHeaders,
+      });
+
+    const adminAuthorized = (req) => {
+      if (!env.ADMIN_SECRET) return false;
+      const authorization = req.headers.get("Authorization") || "";
+      const secret = req.headers.get("X-Admin-Secret") || "";
+      return (
+        authorization === `Bearer ${env.ADMIN_SECRET}` ||
+        secret === env.ADMIN_SECRET
+      );
+    };
+
+    const requireAdmin = (req) => {
+      if (!env.ADMIN_SECRET) {
+        return json(
+          { status: "error", message: "ADMIN_SECRET no está configurado." },
+          500,
+        );
+      }
+      if (!adminAuthorized(req)) {
+        return json({ status: "error", message: "No autorizado." }, 401);
+      }
+      return null;
+    };
+
+    const printifyRequest = async (endpoint, options = {}) => {
+      if (!env.PRINTIFY_API_KEY) {
+        throw new Error("PRINTIFY_API_KEY no está configurada.");
+      }
+      return fetch(`${PRINTIFY_API_BASE}${endpoint}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${env.PRINTIFY_API_KEY}`,
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers || {}),
+        },
+      });
+    };
+
+    const parsePayload = (value) => {
+      try {
+        const parsed = JSON.parse(value || "{}");
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    };
+
+    const getProduct = async (id) => {
+      return env.DB.prepare(
+        `SELECT printify_id, shop_id, title, description, status, payload_json, updated_at
+         FROM printify_products
+         WHERE printify_id = ?
+         LIMIT 1`
+      )
+        .bind(String(id))
+        .first();
+    };
+
+    const saveProduct = async (product, shopId) => {
+      if (!product || !product.id) {
+        throw new Error("El producto no contiene un ID válido.");
+      }
+      await env.DB.prepare(
+        `INSERT INTO printify_products (printify_id, shop_id, title, description, status, payload_json, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(printify_id)
+         DO UPDATE SET
+           shop_id = excluded.shop_id,
+           title = excluded.title,
+           description = excluded.description,
+           status = excluded.status,
+           payload_json = excluded.payload_json,
+           updated_at = CURRENT_TIMESTAMP`
+      )
+        .bind(
+          String(product.id),
+          String(shopId || env.PRINTIFY_SHOP_ID || "manual"),
+          product.title || "",
+          product.description || "",
+          product.status || "draft",
+          JSON.stringify(product),
+        )
+        .run();
+    };
+
+    const listChannels = async (productId) => {
+      const result = await env.DB.prepare(
+        `SELECT id, product_id, channel, enabled, status, external_product_id, published_at, created_at, updated_at
+         FROM product_channels
+         WHERE product_id = ?
+         ORDER BY channel ASC`
+      )
+        .bind(String(productId))
+        .all();
+      return result.results || [];
+    };
+
+    const getPublicProduct = async (id) => {
+      return env.DB.prepare(
+        `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url
+         FROM printify_products p
+         INNER JOIN product_channels pc ON pc.product_id = p.printify_id
+         LEFT JOIN product_display_settings pds ON pds.product_id = p.printify_id
+         LEFT JOIN product_image_processing pip ON pip.product_id = p.printify_id
+         WHERE p.printify_id = ?
+           AND pc.channel = 'omnia'
+           AND pc.enabled = 1
+           AND pc.status = 'published'
+         LIMIT 1`
+      )
+        .bind(String(id))
+        .first();
+    };
+
+    const normalizePublicProduct = (product) => {
+      const payload = parsePayload(product.payload_json);
+      const variants = Array.isArray(payload.variants) ? payload.variants : [];
+      const availableVariants = variants.filter(
+        (v) => v && v.is_enabled !== false && v.is_available !== false,
+      );
+      const selectedVariant = availableVariants[0] || variants[0] || null;
+
+      const rawPrice =
+        selectedVariant && selectedVariant.price != null
+          ? Number(selectedVariant.price)
+          : Number(payload.price || 0);
+
+      const price = Number.isFinite(rawPrice) ? rawPrice / 100 : 0;
+      const images = Array.isArray(payload.images) ? payload.images : [];
+      const normalizedImages = normalizeMockupImages(images);
+
+      const selectedImage = normalizedImages.find(
+        (image) => image.src === product.main_image_url
+      );
+      const defaultImage =
+        selectedImage ||
+        normalizedImages.find((image) => image.is_default === true) ||
+        normalizedImages[0] ||
+        null;
+
+      const mainImageUrl = defaultImage ? defaultImage.src : "";
+      const processedImageUrl = product.processed_image_url || "";
+      const displayImageUrl = processedImageUrl || mainImageUrl;
+
+      const finalizedImages = normalizedImages.map((image) => ({
+        ...image,
+        is_default: image.src === mainImageUrl,
+      }));
+
+      return {
+        ...payload,
+        id: product.printify_id,
+        printify_id: product.printify_id,
+        shop_id: product.shop_id,
+        title: product.title || payload.title || "",
+        description: product.description || payload.description || "",
+        status: product.status || payload.status || "",
+        price,
+        image: displayImageUrl,
+        original_image: mainImageUrl,
+        processed_image: processedImageUrl || null,
+        images: finalizedImages,
+        options: Array.isArray(payload.options) ? payload.options : [],
+        updated_at: product.updated_at,
+        is_published: true,
+      };
+    };
+
+    const verifyPrintifySignature = async (rawBody, signature) => {
+      if (!env.PRINTIFY_WEBHOOK_SECRET || !signature) return false;
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(env.PRINTIFY_WEBHOOK_SECRET),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const digest = await crypto.subtle.sign(
+        "HMAC",
+        key,
+        new TextEncoder().encode(rawBody),
+      );
+      const expected =
+        "sha256=" +
+        Array.from(new Uint8Array(digest))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      if (signature.length !== expected.length) return false;
+      let difference = 0;
+      for (let i = 0; i < expected.length; i++) {
+        difference += signature.charCodeAt(i) ^ expected.charCodeAt(i);
+      }
+      return difference === 0;
+    };
+
+    if (method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    if (method === "GET" && path === "/") {
+      return json({
+        status: "success",
+        app: "OMNIA Marketplace API",
+        message: "OMNIA API funcionando correctamente.",
+      });
+    }
+
+    if (method === "GET" && path === "/api/printify/shops") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const response = await printifyRequest("/shops.json");
+        const data = await response.json();
+        return json(
+          { status: response.ok ? "success" : "error", shops: data },
+          response.ok ? 200 : response.status,
+        );
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "GET" && path === "/api/printify/products") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        if (!env.PRINTIFY_SHOP_ID) {
+          return json(
+            {
+              status: "error",
+              message: "PRINTIFY_SHOP_ID no está configurada.",
+            },
+            400,
+          );
+        }
+        const page = Math.max(1, Number(url.searchParams.get("page") || 1));
+        const response = await printifyRequest(
+          `/shops/${env.PRINTIFY_SHOP_ID}/products.json?page=${page}`,
+        );
+        const data = await response.json();
+        return json(
+          { status: response.ok ? "success" : "error", page, products: data },
+          response.ok ? 200 : response.status,
+        );
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "POST" && path === "/api/sync/printify") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        if (!env.PRINTIFY_SHOP_ID) {
+          return json(
+            {
+              status: "error",
+              message: "PRINTIFY_SHOP_ID no está configurada.",
+            },
+            400,
+          );
+        }
+        const body = await request.json();
+        const id = body.printify_id || body.id;
+        if (!id) {
+          return json({ status: "error", message: "Falta printify_id." }, 400);
+        }
+        const response = await printifyRequest(
+          `/shops/${env.PRINTIFY_SHOP_ID}/products/${encodeURIComponent(String(id))}.json`,
+        );
+        if (!response.ok) {
+          return json(
+            {
+              status: "error",
+              message: "No se pudo obtener el producto desde Printify.",
+              detail: await response.text(),
+            },
+            response.status,
+          );
+        }
+        const product = await response.json();
+        await saveProduct(product, env.PRINTIFY_SHOP_ID);
+        return json({
+          status: "success",
+          message: "Producto sincronizado con D1.",
+          printify_id: String(product.id),
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "POST" && path === "/api/sync/printify-all") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        if (!env.PRINTIFY_SHOP_ID) {
+          return json(
+            {
+              status: "error",
+              message: "PRINTIFY_SHOP_ID no está configurada.",
+            },
+            400,
+          );
+        }
+        let page = 1,
+          total = 0,
+          pages = 0;
+        while (page <= 100) {
+          const response = await printifyRequest(
+            `/shops/${env.PRINTIFY_SHOP_ID}/products.json?page=${page}`,
+          );
+          if (!response.ok) {
+            return json(
+              {
+                status: "error",
+                message: "Error obteniendo productos de Printify.",
+                detail: await response.text(),
+                page,
+                products_synced: total,
+              },
+              response.status,
+            );
+          }
+          const data = await response.json();
+          const products = Array.isArray(data)
+            ? data
+            : Array.isArray(data.data)
+              ? data.data
+              : [];
+          if (!products.length) break;
+          for (const product of products) {
+            if (!product || !product.id) continue;
+            await saveProduct(product, env.PRINTIFY_SHOP_ID);
+            total++;
+          }
+          pages++;
+          if (data.last_page && page >= Number(data.last_page)) break;
+          if (!data.last_page && products.length < 100) break;
+          page++;
+        }
+        return json({
+          status: "success",
+          message: "Sincronización de Printify finalizada.",
+          products_synced: total,
+          pages,
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "GET" && path === "/api/catalog/omnia") {
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url
+           FROM printify_products p
+           INNER JOIN product_channels pc ON pc.product_id = p.printify_id
+           LEFT JOIN product_display_settings pds ON pds.product_id = p.printify_id
+           LEFT JOIN product_image_processing pip ON pip.product_id = p.printify_id
+           WHERE pc.channel = 'omnia' AND pc.enabled = 1 AND pc.status = 'published'
+           ORDER BY p.updated_at DESC`
+        ).all();
+        const products = (results || []).map(normalizePublicProduct);
+        return json({ status: "success", products });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    const productDetailMatch = path.match(
+      /^\/api\/catalog\/products\/([^/]+)$/,
+    );
+    if (method === "GET" && productDetailMatch) {
+      try {
+        const id = decodeURIComponent(productDetailMatch[1]);
+        const product = await getPublicProduct(id);
+        if (!product) {
+          return json(
+            { status: "error", message: "Producto no disponible en OMNIA." },
+            404,
+          );
+        }
+        return json({
+          status: "success",
+          product: normalizePublicProduct(product),
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "GET" && path === "/api/admin/products") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT printify_id, shop_id, title, description, status, payload_json, updated_at
+           FROM printify_products
+           ORDER BY updated_at DESC`
+        ).all();
+        const products = [];
+        for (const product of results || []) {
+          products.push({
+            ...product,
+            payload: parsePayload(product.payload_json),
+            channels: await listChannels(product.printify_id),
+          });
+        }
+        return json({ status: "success", products });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "POST" && path === "/api/admin/products/manual") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const body = await request.json();
+        const title = String(body.title || "").trim();
+        const description = String(body.description || "").trim();
+        const category = String(body.category || "").trim();
+        const price = Number(body.price);
+
+        if (!title)
+          return json(
+            { status: "error", message: "El título es obligatorio." },
+            400,
+          );
+        if (!Number.isFinite(price) || price < 0)
+          return json({ status: "error", message: "Precio no válido." }, 400);
+
+        const images = Array.isArray(body.images)
+          ? body.images
+              .filter((img) => typeof img === "string" && img.trim())
+              .map((src, i) => ({ src: src.trim(), is_default: i === 0 }))
+          : body.image
+            ? [{ src: String(body.image), is_default: true }]
+            : [];
+
+        const id = `manual_${crypto.randomUUID()}`;
+        const variants = [
+          {
+            id: `${id}_variant_1`,
+            title: "Predeterminado",
+            price: Math.round(price * 100),
+            is_enabled: true,
+            is_available: true,
+          },
+        ];
+        const product = {
+          id,
+          title,
+          description,
+          category,
+          price: Math.round(price * 100),
+          images,
+          variants,
+          options: [],
+          tags: [],
+          origin: "manual",
+          status: "draft",
+        };
+
+        await saveProduct(product, "manual");
+        return json(
+          {
+            status: "success",
+            message: "Producto manual creado.",
+            product: { ...product, printify_id: id },
+          },
+          201,
+        );
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    const channelsMatch = path.match(
+      /^\/api\/admin\/products\/([^/]+)\/channels$/,
+    );
+    if (method === "GET" && channelsMatch) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const id = decodeURIComponent(channelsMatch[1]);
+        const product = await getProduct(id);
+        if (!product)
+          return json(
+            { status: "error", message: "Producto no encontrado." },
+            404,
+          );
+        return json({
+          status: "success",
+          product: { ...product, payload: parsePayload(product.payload_json) },
+          channels: await listChannels(id),
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    const mockupMatch = path.match(
+      /^\/api\/admin\/products\/([^/]+)\/mockup$/
+    );
+
+    if (mockupMatch && ["GET", "PUT"].includes(method)) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+
+      try {
+        if (!env.DB) {
+          return json({
+            status: "error",
+            message: "La base de datos D1 no está configurada."
+          }, 500);
+        }
+
+        const id = decodeURIComponent(mockupMatch[1]);
+        const product = await getProduct(id);
+
+        if (!product) {
+          return json({
+            status: "error",
+            message: "Producto no encontrado."
+          }, 404);
+        }
+
+        const payload = parsePayload(product.payload_json);
+        const rawImages = Array.isArray(payload.images)
+          ? payload.images
+          : [];
+        const images = normalizeMockupImages(rawImages);
+
+        if (!images.length) {
+          return json({
+            status: "error",
+            message: "No se encontraron maquetas válidas. Sincroniza este producto con Printify e inténtalo de nuevo."
+          }, 400);
+        }
+
+        if (method === "GET") {
+          const saved = await env.DB.prepare(
+            `SELECT main_image_url
+             FROM product_display_settings
+             WHERE product_id = ?
+             LIMIT 1`
+          ).bind(id).first();
+
+          const savedUrl = saved?.main_image_url || "";
+          const mainImage =
+            images.find((image) => image.src === savedUrl) ||
+            images.find((image) => image.is_default === true) ||
+            images[0];
+
+          return json({
+            status: "success",
+            product_id: id,
+            main_image_url: mainImage.src,
+            images: images.map((image) => ({
+              ...image,
+              is_default: image.src === mainImage.src
+            }))
+          });
+        }
+
+        let body;
+        try {
+          body = await request.json();
+        } catch {
+          return json({
+            status: "error",
+            message: "El cuerpo de la solicitud no contiene JSON válido."
+          }, 400);
+        }
+
+        const mainImageUrl =
+          typeof body?.main_image_url === "string"
+            ? body.main_image_url.trim()
+            : "";
+
+        if (!mainImageUrl) {
+          return json({
+            status: "error",
+            message: "Selecciona una imagen principal."
+          }, 400);
+        }
+
+        const selectedImage = images.find(
+          (image) => image.src === mainImageUrl
+        );
+
+        if (!selectedImage) {
+          return json({
+            status: "error",
+            message: "La imagen seleccionada no pertenece a este producto."
+          }, 400);
+        }
+
+        await env.DB.prepare(
+          `INSERT INTO product_display_settings
+             (product_id, main_image_url, updated_at)
+           VALUES (?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(product_id) DO UPDATE SET
+             main_image_url = excluded.main_image_url,
+             updated_at = CURRENT_TIMESTAMP`
+        ).bind(id, selectedImage.src).run();
+
+        return json({
+          status: "success",
+          message: "Imagen principal de maqueta guardada correctamente.",
+          product_id: id,
+          main_image_url: selectedImage.src
+        });
+      } catch (error) {
+        return json({
+          status: "error",
+          message: "No se pudo procesar el selector de maquetas.",
+          detail: String(error?.message || error)
+        }, 500);
+      }
+    }
+
+    const removeBackgroundMatch = path.match(
+      /^\/api\/admin\/products\/([^/]+)\/remove-background$/,
+    );
+
+    if (method === "POST" && removeBackgroundMatch) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+
+      try {
+        const id = decodeURIComponent(removeBackgroundMatch[1]);
+
+        if (
+          !env.CLEARBACKDROP_API_KEY ||
+          !env.CLOUDINARY_CLOUD_NAME ||
+          !env.CLOUDINARY_API_KEY ||
+          !env.CLOUDINARY_API_SECRET
+        ) {
+          return json(
+            {
+              status: "error",
+              message: "Faltan secretos de ClearBackdrop o Cloudinary.",
+            },
+            500,
+          );
+        }
+
+        const product = await getProduct(id);
+        if (!product) {
+          return json(
+            {
+              status: "error",
+              message: "Producto no encontrado.",
+            },
+            404,
+          );
+        }
+
+        const body = await request.json();
+        const imageUrl = String(body.image_url || "").trim();
+
+        const payload = parsePayload(product.payload_json);
+        const images = normalizeMockupImages(payload.images).map((img) => img.src);
+
+        if (!imageUrl || !images.includes(imageUrl)) {
+          return json(
+            {
+              status: "error",
+              message: "Selecciona una imagen original válida del producto.",
+            },
+            400,
+          );
+        }
+
+        const parsedUrl = new URL(imageUrl);
+        if (parsedUrl.protocol !== "https:") {
+          return json(
+            {
+              status: "error",
+              message: "La imagen debe utilizar HTTPS.",
+            },
+            400,
+          );
+        }
+
+        const sourceResponse = await fetch(imageUrl);
+        if (!sourceResponse.ok) {
+          return json(
+            {
+              status: "error",
+              message: "No se pudo descargar la imagen original.",
+            },
+            502,
+          );
+        }
+
+        const sourceType = (sourceResponse.headers.get("Content-Type") || "")
+          .split(";")[0]
+          .trim()
+          .toLowerCase();
+
+        const declaredSize = Number(
+          sourceResponse.headers.get("Content-Length") || 0,
+        );
+
+        if (
+          !sourceType.startsWith("image/") ||
+          sourceType === "image/svg+xml" ||
+          declaredSize > 15 * 1024 * 1024
+        ) {
+          return json(
+            {
+              status: "error",
+              message: "La imagen debe ser válida y no superar 15 MB.",
+            },
+            400,
+          );
+        }
+
+        const sourceBytes = await sourceResponse.arrayBuffer();
+
+        if (sourceBytes.byteLength > 15 * 1024 * 1024) {
+          return json(
+            {
+              status: "error",
+              message: "La imagen supera el límite de 15 MB.",
+            },
+            400,
+          );
+        }
+
+        const input = new FormData();
+        input.append(
+          "image",
+          new Blob([sourceBytes], { type: sourceType }),
+          "original-image",
+        );
+
+        const processedResponse = await fetch(
+          "https://clearbackdrop.com/api/v1/remove-background",
+          {
+            method: "POST",
+            headers: {
+              "X-API-Key": env.CLEARBACKDROP_API_KEY,
+            },
+            body: input,
+          },
+        );
+
+        if (!processedResponse.ok) {
+          const detail = (await processedResponse.text()).slice(0, 500);
+          return json(
+            {
+              status: "error",
+              message: "ClearBackdrop no pudo procesar la imagen.",
+              detail,
+            },
+            502,
+          );
+        }
+
+        const processedType = (
+          processedResponse.headers.get("Content-Type") || ""
+        ).toLowerCase();
+
+        if (!processedType.includes("image/png")) {
+          return json(
+            {
+              status: "error",
+              message: "El servicio no devolvió un PNG transparente.",
+            },
+            502,
+          );
+        }
+
+        const pngBytes = await processedResponse.arrayBuffer();
+
+        if (!pngBytes.byteLength || pngBytes.byteLength > 15 * 1024 * 1024) {
+          return json(
+            {
+              status: "error",
+              message: "El PNG procesado está vacío o supera 15 MB.",
+            },
+            502,
+          );
+        }
+
+        const uploadForm = new FormData();
+        uploadForm.append(
+          "file",
+          new Blob([pngBytes], { type: "image/png" }),
+          "product-transparent.png",
+        );
+        uploadForm.append("folder", "omnia/processed");
+        uploadForm.append(
+          "public_id",
+          `product_${id.replace(/[^a-zA-Z0-9_-]/g, "_")}_${Date.now()}`,
+        );
+
+        const cloudinaryResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+          {
+            method: "POST",
+            headers: {
+              Authorization:
+                "Basic " +
+                btoa(`${env.CLOUDINARY_API_KEY}:${env.CLOUDINARY_API_SECRET}`),
+            },
+            body: uploadForm,
+          },
+        );
+
+        const cloudinaryData = await cloudinaryResponse.json();
+
+        if (!cloudinaryResponse.ok || !cloudinaryData.secure_url) {
+          return json(
+            {
+              status: "error",
+              message: "No se pudo guardar la imagen en Cloudinary.",
+            },
+            502,
+          );
+        }
+
+        await env.DB.prepare(
+          `INSERT INTO product_image_processing (product_id, original_image_url, processed_image_url, updated_at)
+           VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(product_id) DO UPDATE SET
+             original_image_url = excluded.original_image_url,
+             processed_image_url = excluded.processed_image_url,
+             updated_at = CURRENT_TIMESTAMP`
+        )
+          .bind(id, imageUrl, cloudinaryData.secure_url)
+          .run();
+
+        return json({
+          status: "success",
+          message: "Fondo procesado y PNG guardado en Cloudinary.",
+          product_id: id,
+          original_image_url: imageUrl,
+          processed_image_url: cloudinaryData.secure_url,
+        });
+      } catch (error) {
+        return json(
+          {
+            status: "error",
+            message: error.message || "Error procesando la imagen.",
+          },
+          500,
+        );
+      }
+    }
+
+        const productDeleteMatch = path.match(
+      /^\/api\/admin\/products\/([^/]+)$/
+    );
+
+    if (method === "DELETE" && productDeleteMatch) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+
+      try {
+        const id = decodeURIComponent(productDeleteMatch[1]);
+        const product = await getProduct(id);
+
+        if (!product) {
+          return json(
+            { status: "error", message: "Producto no encontrado." },
+            404
+          );
+        }
+
+        // Eliminar datos locales relacionados, sin tocar Printify.
+        await env.DB.batch([
+          env.DB.prepare(
+            "DELETE FROM product_image_processing WHERE product_id = ?"
+          ).bind(id),
+          env.DB.prepare(
+            "DELETE FROM product_display_settings WHERE product_id = ?"
+          ).bind(id),
+          env.DB.prepare(
+            "DELETE FROM product_channels WHERE product_id = ?"
+          ).bind(id),
+          env.DB.prepare(
+            "DELETE FROM printify_products WHERE printify_id = ?"
+          ).bind(id)
+        ]);
+
+        return json({
+          status: "success",
+          message: "Producto eliminado del registro local de OMNIA. El producto original de Printify no se modificó.",
+          printify_id: id
+        });
+      } catch (error) {
+        return json({
+          status: "error",
+          message: "No se pudo eliminar el producto del registro local.",
+          detail: String(error?.message || error)
+        }, 500);
+      }
+    }
+
+    const productEditMatch = path.match(/^\/api\/admin\/products\/([^/]+)$/);
+    if (["PUT", "PATCH"].includes(method) && productEditMatch) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const id = decodeURIComponent(productEditMatch[1]);
+        const existing = await getProduct(id);
+        if (!existing)
+          return json(
+            { status: "error", message: "Producto no encontrado." },
+            404,
+          );
+
+        const body = await request.json();
+        const payload = parsePayload(existing.payload_json);
+        const title =
+          body.title !== undefined ? String(body.title).trim() : existing.title;
+        const description =
+          body.description !== undefined
+            ? String(body.description)
+            : existing.description;
+
+        if (!title)
+          return json(
+            { status: "error", message: "El título no puede estar vacío." },
+            400,
+          );
+        Object.assign(payload, { title, description });
+
+        if (body.price !== undefined) {
+          const price = Number(body.price);
+          if (!Number.isFinite(price) || price < 0)
+            return json({ status: "error", message: "Precio no válido." }, 400);
+          payload.price = Math.round(price * 100);
+          payload.variants = [
+            {
+              id: `${id}_variant_1`,
+              title: "Predeterminado",
+              price: Math.round(price * 100),
+              is_enabled: true,
+              is_available: true,
+            },
+          ];
+        }
+
+        await env.DB.prepare(
+          `UPDATE printify_products SET title = ?, description = ?, payload_json = ?, updated_at = CURRENT_TIMESTAMP WHERE printify_id = ?`
+        )
+          .bind(title, description, JSON.stringify(payload), id)
+          .run();
+
+        return json({
+          status: "success",
+          message: "Producto actualizado.",
+          product: { ...existing, title, description, payload },
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "POST" && channelsMatch) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const id = decodeURIComponent(channelsMatch[1]);
+        const body = await request.json();
+        const channel = String(body.channel || "")
+          .trim()
+          .toLowerCase();
+        const allowedChannels = ["omnia", "shopify", "amazon", "bonanza"];
+
+        if (!allowedChannels.includes(channel))
+          return json({ status: "error", message: "Canal no válido." }, 400);
+        if (!(await getProduct(id)))
+          return json(
+            { status: "error", message: "El producto no existe." },
+            404,
+          );
+
+        const enabled = channel === "omnia" ? 1 : 0;
+        const status = channel === "omnia" ? "published" : "pending";
+
+        await env.DB.prepare(
+          `INSERT INTO product_channels (product_id, channel, enabled, status, published_at, updated_at)
+           VALUES (?, ?, ?, ?, CASE WHEN ? = 'published' THEN CURRENT_TIMESTAMP ELSE NULL END, CURRENT_TIMESTAMP)
+           ON CONFLICT(product_id, channel) DO UPDATE SET
+             enabled = excluded.enabled,
+             status = excluded.status,
+             published_at = CASE WHEN excluded.status = 'published' THEN CURRENT_TIMESTAMP ELSE product_channels.published_at END,
+             updated_at = CURRENT_TIMESTAMP`
+        )
+          .bind(id, channel, enabled, status, status)
+          .run();
+
+        return json({
+          status: "success",
+          channel,
+          enabled,
+          publication_status: status,
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    const deleteChannelMatch = path.match(
+      /^\/api\/admin\/products\/([^/]+)\/channels\/([^/]+)$/,
+    );
+    if (method === "DELETE" && deleteChannelMatch) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      try {
+        const id = decodeURIComponent(deleteChannelMatch[1]);
+        const channel = decodeURIComponent(deleteChannelMatch[2])
+          .trim()
+          .toLowerCase();
+        await env.DB.prepare(
+          `DELETE FROM product_channels WHERE product_id = ? AND channel = ?`
+        )
+          .bind(id, channel)
+          .run();
+        return json({
+          status: "success",
+          message: `Canal ${channel} retirado.`,
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "POST" && path === "/api/webhooks/printify") {
+      try {
+        const rawBody = await request.text();
+        const signature =
+          request.headers.get("X-Pfy-Signature") ||
+          request.headers.get("X-Printify-Signature") ||
+          "";
+        if (!(await verifyPrintifySignature(rawBody, signature))) {
+          return json({ status: "error", message: "Firma no válida." }, 401);
+        }
+        const event = JSON.parse(rawBody);
+        const resourceId =
+          event.resource && typeof event.resource === "object"
+            ? event.resource.id
+            : event.resource;
+        if (!resourceId)
+          return json({ status: "success", message: "Evento sin ID." });
+
+        const response = await printifyRequest(
+          `/shops/${env.PRINTIFY_SHOP_ID}/products/${encodeURIComponent(String(resourceId))}.json`,
+        );
+        if (!response.ok)
+          return json(
+            { status: "error", message: "No se pudo recuperar de Printify." },
+            502,
+          );
+
+        const product = await response.json();
+        await saveProduct(product, env.PRINTIFY_SHOP_ID);
+        return json({
+          status: "success",
+          message: "Webhook procesado.",
+          printify_id: String(product.id),
+        });
+      } catch (error) {
+        return json({ status: "error", message: error.message }, 500);
+      }
+    }
+
+    if (method === "POST" && path === "/api/webhooks/printify/setup") {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      return json({
+        status: "manual_setup_required",
+        webhook_url: `${url.origin}/api/webhooks/printify`,
+      });
+    }
+
+    return json({ status: "error", message: "Ruta no encontrada." }, 404);
+  },
+};
