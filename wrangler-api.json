@@ -1,0 +1,12 @@
+{
+  "name": "omnia-api",
+  "main": "worker-api.js",
+  "compatibility_date": "2024-09-23",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "omnia-db",
+      "database_id": "9b1c478e-a673-43c5-8e93-2094e01898f2"
+    }
+  ]
+}
