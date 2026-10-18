@@ -622,6 +622,14 @@ if (!image && product.payload) {
     >
         Elegir maqueta
     </button>
+
+    <button
+        class="secondary-button"
+        style="border-color:#b91c1c;color:#ef4444"
+        onclick="deleteProductFromOmnia('${encodeURIComponent(String(id))}')"
+    >
+        Eliminar producto
+    </button>
 </div>
                 </div>
             `;
@@ -668,6 +676,54 @@ async function withdrawProductFromOmnia(encodedProductId) {
     } catch (error) {
         window.alert(
             "No se pudo retirar el producto de OMNIA.\n" + error.message
+        );
+    }
+}
+
+async function deleteProductFromOmnia(encodedProductId) {
+    const productId = decodeURIComponent(encodedProductId);
+
+    if (!window.confirm(
+        "¿Eliminar definitivamente este producto del registro de OMNIA?\n\n" +
+        "Se eliminarán sus datos locales y asociaciones de publicación, " +
+        "incluidos los ajustes de imagen.\n\n" +
+        "El producto original NO se eliminará de Printify. " +
+        "Las publicaciones externas existentes podrían seguir activas.\n\n" +
+        "Esta acción no se puede deshacer."
+    )) {
+        return;
+    }
+
+    if (!requestAdminSecret()) return;
+
+    try {
+        const response = await adminFetch(
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}`,
+            {
+                method: "DELETE",
+                headers: getAdminHeaders(false)
+            }
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        window.alert(
+            "Producto eliminado del registro local de OMNIA. " +
+            "Puedes volver a importarlo desde Printify."
+        );
+
+        await loadAdminProducts();
+
+        if (typeof loadDashboardStats === "function") {
+            loadDashboardStats();
+        }
+    } catch (error) {
+        window.alert(
+            "No se pudo eliminar el producto.\n" + error.message
         );
     }
 }
