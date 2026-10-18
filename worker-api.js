@@ -175,11 +175,12 @@ export default {
 
     const getPublicProduct = async (id) => {
       return env.DB.prepare(
-        `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url
+        `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url, pos.settings_json AS omnia_settings_json
          FROM printify_products p
          INNER JOIN product_channels pc ON pc.product_id = p.printify_id
          LEFT JOIN product_display_settings pds ON pds.product_id = p.printify_id
          LEFT JOIN product_image_processing pip ON pip.product_id = p.printify_id
+         LEFT JOIN product_omnia_settings pos ON pos.product_id = p.printify_id
          WHERE p.printify_id = ?
            AND pc.channel = 'omnia'
            AND pc.enabled = 1
@@ -192,34 +193,53 @@ export default {
 
     const normalizePublicProduct = (product) => {
       const payload = parsePayload(product.payload_json);
-      const variants = Array.isArray(payload.variants) ? payload.variants : [];
+      let custom = {};
+      try {
+        const parsed = product.omnia_settings_json
+          ? JSON.parse(product.omnia_settings_json)
+          : {};
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) custom = parsed;
+      } catch (_) {}
+
+      const variants = Array.isArray(custom.variants)
+        ? custom.variants
+        : (Array.isArray(payload.variants) ? payload.variants : []);
+      const options = Array.isArray(custom.options)
+        ? custom.options
+        : (Array.isArray(payload.options) ? payload.options : []);
       const availableVariants = variants.filter(
         (v) => v && v.is_enabled !== false && v.is_available !== false,
       );
       const selectedVariant = availableVariants[0] || variants[0] || null;
-
-      const rawPrice =
-        selectedVariant && selectedVariant.price != null
-          ? Number(selectedVariant.price)
-          : Number(payload.price || 0);
-
+      const rawPrice = selectedVariant && selectedVariant.price != null
+        ? Number(selectedVariant.price)
+        : Number(payload.price || 0);
       const price = Number.isFinite(rawPrice) ? rawPrice / 100 : 0;
-      const images = Array.isArray(payload.images) ? payload.images : [];
-      const normalizedImages = normalizeMockupImages(images);
 
-      const selectedImage = normalizedImages.find(
-        (image) => image.src === product.main_image_url
-      );
-      const defaultImage =
-        selectedImage ||
+      const rawImages = Array.isArray(custom.images)
+        ? custom.images
+        : (Array.isArray(payload.images) ? payload.images : []);
+      let normalizedImages = normalizeMockupImages(rawImages);
+      const coverImageUrl = typeof custom.cover_image === "string"
+        ? custom.cover_image.trim()
+        : "";
+
+      if (coverImageUrl && !normalizedImages.some((image) => image.src === coverImageUrl)) {
+        normalizedImages = [
+          { src: coverImageUrl, url: coverImageUrl, is_default: true },
+          ...normalizedImages,
+        ];
+      }
+
+      const selectedImage =
+        (coverImageUrl && normalizedImages.find((image) => image.src === coverImageUrl)) ||
+        normalizedImages.find((image) => image.src === product.main_image_url);
+      const defaultImage = selectedImage ||
         normalizedImages.find((image) => image.is_default === true) ||
-        normalizedImages[0] ||
-        null;
-
+        normalizedImages[0] || null;
       const mainImageUrl = defaultImage ? defaultImage.src : "";
       const processedImageUrl = product.processed_image_url || "";
-      const displayImageUrl = processedImageUrl || mainImageUrl;
-
+      const displayImageUrl = coverImageUrl ? mainImageUrl : (processedImageUrl || mainImageUrl);
       const finalizedImages = normalizedImages.map((image) => ({
         ...image,
         is_default: image.src === mainImageUrl,
@@ -230,20 +250,21 @@ export default {
         id: product.printify_id,
         printify_id: product.printify_id,
         shop_id: product.shop_id,
-        title: product.title || payload.title || "",
-        description: product.description || payload.description || "",
+        title: typeof custom.title === "string" ? custom.title : (product.title || payload.title || ""),
+        description: typeof custom.description === "string" ? custom.description : (product.description || payload.description || ""),
+        category: typeof custom.category === "string" ? custom.category : (payload.category || ""),
         status: product.status || payload.status || "",
         price,
         image: displayImageUrl,
         original_image: mainImageUrl,
         processed_image: processedImageUrl || null,
         images: finalizedImages,
-        options: Array.isArray(payload.options) ? payload.options : [],
+        variants,
+        options,
         updated_at: product.updated_at,
         is_published: true,
       };
     };
-
     const verifyPrintifySignature = async (rawBody, signature) => {
       if (!env.PRINTIFY_WEBHOOK_SECRET || !signature) return false;
       const key = await crypto.subtle.importKey(
@@ -431,11 +452,12 @@ export default {
     if (method === "GET" && path === "/api/catalog/omnia") {
       try {
         const { results } = await env.DB.prepare(
-          `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url
+          `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url, pos.settings_json AS omnia_settings_json
            FROM printify_products p
            INNER JOIN product_channels pc ON pc.product_id = p.printify_id
            LEFT JOIN product_display_settings pds ON pds.product_id = p.printify_id
            LEFT JOIN product_image_processing pip ON pip.product_id = p.printify_id
+         LEFT JOIN product_omnia_settings pos ON pos.product_id = p.printify_id
            WHERE pc.channel = 'omnia' AND pc.enabled = 1 AND pc.status = 'published'
            ORDER BY p.updated_at DESC`
         ).all();
@@ -700,7 +722,66 @@ export default {
       }
     }
 
-    const removeBackgroundMatch = path.match(
+    const omniaSettingsMatch = path.match(/^\/api\/admin\/products\/([^/]+)\/omnia-settings$/);
+if (omniaSettingsMatch && (method === "GET" || method === "PUT")) {
+  const authError = requireAdmin(request);
+  if (authError) return authError;
+  if (!env.DB) return json({ status: "error", message: "Base de datos no disponible." }, 500);
+  try {
+    const id = decodeURIComponent(omniaSettingsMatch[1]);
+    if (!(await getProduct(id))) return json({ status: "error", message: "Producto no encontrado." }, 404);
+    if (method === "GET") {
+      const row = await env.DB.prepare("SELECT settings_json, updated_at FROM product_omnia_settings WHERE product_id = ?").bind(id).first();
+      let settings = {};
+      if (row?.settings_json) settings = JSON.parse(row.settings_json);
+      return json({ status: "success", product_id: id, settings, updated_at: row?.updated_at || null });
+    }
+    const body = await request.json();
+    const settings = body?.settings;
+    const allowed = ["title", "description", "category", "images", "cover_image", "variants", "options"];
+    if (!settings || typeof settings !== "object" || Array.isArray(settings) || Object.keys(settings).some(k => !allowed.includes(k))) {
+      return json({ status: "error", message: "Configuración no válida o contiene campos no permitidos." }, 400);
+    }
+    for (const [key, maxLength] of [
+      ["title", 5000],
+      ["description", 50000],
+      ["category", 500]
+    ]) {
+      if (settings[key] !== undefined && typeof settings[key] !== "string") {
+        return json({ status: "error", message: key + " debe ser texto." }, 400);
+      }
+      if (typeof settings[key] === "string" && settings[key].length > maxLength) {
+        return json({ status: "error", message: key + " supera la longitud permitida." }, 400);
+      }
+    }
+
+    if (settings.cover_image !== undefined && typeof settings.cover_image !== "string") {
+      return json({ status: "error", message: "cover_image debe ser texto." }, 400);
+    }
+    if (typeof settings.cover_image === "string" && settings.cover_image.length > 5000) {
+      return json({ status: "error", message: "La URL de portada supera la longitud permitida." }, 400);
+    }
+
+    const arrayLimits = { images: 100, variants: 500, options: 100 };
+    for (const [key, maxItems] of Object.entries(arrayLimits)) {
+      if (settings[key] !== undefined && !Array.isArray(settings[key])) {
+        return json({ status: "error", message: key + " debe ser una lista." }, 400);
+      }
+      if (Array.isArray(settings[key]) && settings[key].length > maxItems) {
+        return json({ status: "error", message: key + " supera la cantidad permitida." }, 400);
+      }
+    }
+
+    const saved = JSON.stringify(settings);
+    if (saved.length > 200000) return json({ status: "error", message: "Configuración demasiado grande." }, 400);
+    await env.DB.prepare("INSERT INTO product_omnia_settings (product_id, settings_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(product_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = CURRENT_TIMESTAMP").bind(id, saved).run();
+    return json({ status: "success", message: "Configuración de OMNIA guardada correctamente.", product_id: id });
+  } catch (error) {
+    return json({ status: "error", message: "No se pudo procesar la configuración de OMNIA.", detail: String(error?.message || error) }, 500);
+  }
+}
+
+const removeBackgroundMatch = path.match(
       /^\/api\/admin\/products\/([^/]+)\/remove-background$/,
     );
 
