@@ -264,6 +264,7 @@ async function loadAdminProducts() {
             data.products ||
             data.items ||
             data.catalogo ||
+            data.data ||
             [];
 
         renderAdminProducts(products);
@@ -602,6 +603,10 @@ if (!image && product.payload) {
                     </div>
                     
 <div class="product-admin-actions">
+                    <button class="primary-button" onclick="openProductEditor('${encodeURIComponent(String(id))}')">
+                        Editar producto
+                    </button>
+
     <button
         class="primary-button"
         onclick="openProductChannels('${encodeURIComponent(String(id))}')"
@@ -1300,3 +1305,225 @@ window.showSection = showSection;
 
 loadInitialSection();
 loadDashboardStats();
+
+
+async function openProductEditor(encodedProductId) {
+    const productId = decodeURIComponent(String(encodedProductId || ""));
+    if (!productId) {
+        alert("No se encontró el identificador del producto.");
+        return;
+    }
+
+    let overlay;
+    try {
+        const response = await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products`, {
+            headers: getAdminHeaders(false)
+        });
+        if (!response.ok) throw new Error("No se pudo cargar el catálogo.");
+        const result = await response.json();
+        const products = Array.isArray(result) ? result : (result.products || result.data || []);
+        const product = products.find(p =>
+            String(p.printify_id || p.printifyId || p.id) === productId
+        );
+        if (!product) throw new Error("Producto no encontrado en el catálogo.");
+
+        const settingsResponse = await adminFetch(
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/omnia-settings`,
+            { headers: getAdminHeaders(false) }
+        );
+        if (!settingsResponse.ok) throw new Error("No se pudieron cargar los ajustes de OMNIA.");
+        const settingsResult = await settingsResponse.json();
+        const saved = settingsResult.settings || {};
+        const payload = product.payload || {};
+        const value = (key, fallback) =>
+            saved[key] !== undefined ? saved[key] : fallback;
+
+        const images = value("images", Array.isArray(payload.images) ? payload.images : []);
+        const variants = value("variants", Array.isArray(payload.variants) ? payload.variants : []);
+        const options = value("options", Array.isArray(payload.options) ? payload.options : []);
+
+        overlay = document.createElement("div");
+        overlay.className = "admin-modal-overlay omnia-product-editor-overlay";
+        overlay.innerHTML = `
+          <section class="admin-modal-content omnia-product-editor" role="dialog" aria-modal="true">
+            <header class="admin-modal-header">
+              <h2>Editar producto OMNIA</h2>
+              <button type="button" class="admin-modal-close" aria-label="Cerrar">×</button>
+            </header>
+            <div class="admin-modal-body">
+              <label>Título
+                <input id="omnia-editor-title" maxlength="5000">
+              </label>
+              <label>Descripción
+                <textarea id="omnia-editor-description" rows="5" maxlength="50000"></textarea>
+              </label>
+              <label>Categoría
+                <input id="omnia-editor-category" maxlength="500">
+              </label>
+              <label>Imágenes (una URL por línea)
+                <textarea id="omnia-editor-images" rows="5"></textarea>
+              </label>
+              <label>URL de imagen de portada
+                <input id="omnia-editor-cover" type="url">
+              </label>
+              <label>Variantes en formato JSON
+                <textarea id="omnia-editor-variants" rows="7"></textarea>
+              </label>
+              <label>Opciones en formato JSON
+                <textarea id="omnia-editor-options" rows="5"></textarea>
+              </label>
+              <p class="omnia-editor-note">
+                Los cambios se guardan por separado de los datos originales de Printify.
+                Las imágenes deben tener una URL accesible; la carga directa desde la galería
+                del teléfono requiere configurar almacenamiento.
+              </p>
+            </div>
+            <footer class="admin-modal-footer">
+              <button type="button" class="secondary-button omnia-editor-cancel">Cancelar</button>
+              <button type="button" class="primary-button omnia-editor-save">Guardar cambios</button>
+            </footer>
+          </section>`;
+
+        document.body.appendChild(overlay);
+        const dialog = overlay.querySelector(".omnia-product-editor");
+        const field = id => dialog.querySelector("#" + id);
+        const close = () => overlay.remove();
+
+        field("omnia-editor-title").value = value("title", product.title || product.name || "");
+        field("omnia-editor-description").value = value("description", product.description || "");
+        field("omnia-editor-category").value = value("category", product.category || "");
+
+        const imageUrls = Array.isArray(images)
+            ? images.map(item => typeof item === "string"
+                ? item
+                : item?.src || item?.url || item?.preview_url || item?.preview || "")
+                .filter(Boolean)
+            : [];
+        field("omnia-editor-images").value = imageUrls.join("\n");
+
+        const originalCover = product.main_image_url || product.image || imageUrls[0] || "";
+        field("omnia-editor-cover").value = value("cover_image", originalCover);
+        field("omnia-editor-variants").value = JSON.stringify(variants, null, 2);
+        field("omnia-editor-options").value = JSON.stringify(options, null, 2);
+
+        overlay.querySelector(".admin-modal-close").addEventListener("click", close);
+        overlay.querySelector(".omnia-editor-cancel").addEventListener("click", close);
+        overlay.addEventListener("click", event => {
+            if (event.target === overlay) close();
+        });
+
+        overlay.querySelector(".omnia-editor-save").addEventListener("click", async event => {
+            const saveButton = event.currentTarget;
+            let parsedVariants, parsedOptions;
+            try {
+                parsedVariants = JSON.parse(field("omnia-editor-variants").value || "[]");
+                parsedOptions = JSON.parse(field("omnia-editor-options").value || "[]");
+                if (!Array.isArray(parsedVariants) || !Array.isArray(parsedOptions)) {
+                    throw new Error("Variantes y opciones deben ser listas JSON.");
+                }
+            } catch (error) {
+                alert("Revisa el JSON de variantes y opciones: " + error.message);
+                return;
+            }
+
+            const imageList = field("omnia-editor-images").value
+                .split(/\r?\n/)
+                .map(url => url.trim())
+                .filter(Boolean);
+
+            if (imageList.some(url => !/^https?:\/\/\S+$/i.test(url))) {
+                alert("Cada imagen debe tener una URL HTTP o HTTPS válida.");
+                return;
+            }
+
+            const cover = field("omnia-editor-cover").value.trim();
+            if (cover && !/^https?:\/\/\S+$/i.test(cover)) {
+                alert("La URL de portada debe comenzar con http:// o https://.");
+                return;
+            }
+
+            const settings = {
+                title: field("omnia-editor-title").value,
+                description: field("omnia-editor-description").value,
+                category: field("omnia-editor-category").value,
+                images: imageList,
+                variants: parsedVariants,
+                options: parsedOptions
+            };
+            if (cover) settings.cover_image = cover;
+
+            saveButton.disabled = true;
+            saveButton.textContent = "Guardando…";
+            try {
+                const response = await adminFetch(
+                    `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/omnia-settings`,
+                    {
+                        method: "PUT",
+                        headers: getAdminHeaders(true),
+                        body: JSON.stringify({ settings })
+                    }
+                );
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result.status === "error") {
+                    throw new Error(result.message || "No se pudieron guardar los cambios.");
+                }
+                alert("Ajustes de OMNIA guardados. La integración con el catálogo público es el siguiente paso.");
+                close();
+            } catch (error) {
+                alert(error.message || "Error al guardar los cambios.");
+                saveButton.disabled = false;
+                saveButton.textContent = "Guardar cambios";
+            }
+        });
+    } catch (error) {
+        if (overlay) overlay.remove();
+        alert(error.message || "No se pudo abrir el editor.");
+    }
+}
+
+
+async function syncAllPrintifyProducts() {
+    const button = document.getElementById("printify-sync-button");
+    const status = document.getElementById("printify-sync-status");
+    if (!button || !status) return;
+
+    button.disabled = true;
+    status.textContent = "Sincronizando productos desde Printify…";
+
+    try {
+        const response = await adminFetch(
+            `${OMNIA_API_BACKEND}/api/sync/printify-all`,
+            { method: "POST" }
+        );
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || result.status !== "success") {
+            throw new Error(result.message || `Error HTTP ${response.status}`);
+        }
+
+        status.textContent =
+            `Sincronización completada: ${result.products_synced ?? 0} productos en ${result.pages ?? 0} páginas.`;
+
+        await refreshOmniaProducts();
+    } catch (error) {
+        status.textContent = `No se pudo sincronizar: ${error.message || "error desconocido"}`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function refreshOmniaProducts() {
+    const status = document.getElementById("printify-sync-status");
+    try {
+        await loadAdminProducts();
+        if (status) {
+            status.textContent += " Abre Productos para ver el catálogo actualizado.";
+        }
+        await loadDashboardStats();
+    } catch (error) {
+        if (status) status.textContent += ` Error al actualizar el panel: ${error.message}`;
+    }
+}
+
+window.syncAllPrintifyProducts = syncAllPrintifyProducts;
+window.refreshOmniaProducts = refreshOmniaProducts;
