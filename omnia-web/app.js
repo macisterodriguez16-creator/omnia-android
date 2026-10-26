@@ -185,7 +185,45 @@ const i18n = {
         p4: { name: 'Cyber Abstract Sculpture', desc: 'Futuristic art piece sculpted in high-density gold-plated resin.' },
         p5: { name: 'Titanium Sunglasses', desc: 'UV400 protection with ultra-light aerospace-grade titanium frame.' },
         p6: { name: 'OMNIA Oversized Hoodie', desc: '100% organic heavy cotton with high-quality embroidery.' }
+
+    },
+    fr: {
+        addBtn: "Ajouter au panier",
+        p1: { name: "Veste en cuir nocturne", desc: "Veste en cuir italien sélectionné à la main, avec finitions métalliques et doublure en soie." },
+        p2: { name: "Baskets OMNIA Street Pro", desc: "Édition limitée avec semelles amortissantes et matériaux durables." },
+        p3: { name: "Montre chronographe minimaliste", desc: "Mouvement suisse de précision et verre saphir résistant aux rayures." },
+        p4: { name: "Sculpture abstraite Cyber", desc: "Œuvre futuriste sculptée en résine haute densité plaquée or." },
+        p5: { name: "Lunettes de soleil en titane", desc: "Protection UV400 et monture ultra-légère en titane de qualité aérospatiale." },
+        p6: { name: "Sweat oversize OMNIA", desc: "Coton épais 100 % biologique avec broderies de haute qualité." }
+    },
+    pt: {
+        addBtn: "Adicionar ao carrinho",
+        p1: { name: "Jaqueta de couro noturna", desc: "Jaqueta de couro italiano selecionado à mão, com acabamentos metálicos e forro de seda." },
+        p2: { name: "Tênis OMNIA Street Pro", desc: "Edição limitada com solado de absorção de impacto e materiais sustentáveis." },
+        p3: { name: "Relógio cronógrafo minimalista", desc: "Movimento suíço de precisão com cristal de safira resistente a riscos." },
+        p4: { name: "Escultura abstrata Cyber", desc: "Peça de arte futurista esculpida em resina de alta densidade banhada a ouro." },
+        p5: { name: "Óculos de sol de titânio", desc: "Proteção UV400 com armação ultraleve de titânio de grau aeroespacial." },
+        p6: { name: "Moletom oversized OMNIA", desc: "Algodão pesado 100% orgânico com bordados de alta qualidade." }
+    },
+    it: {
+        addBtn: "Aggiungi al carrello",
+        p1: { name: "Giacca in pelle notturna", desc: "Giacca in pelle italiana selezionata a mano, con finiture metalliche e fodera in seta." },
+        p2: { name: "Sneakers OMNIA Street Pro", desc: "Edizione limitata con suola ammortizzante e materiali sostenibili." },
+        p3: { name: "Orologio cronografo minimalista", desc: "Movimento svizzero di precisione con vetro zaffiro antigraffio." },
+        p4: { name: "Scultura astratta Cyber", desc: "Opera futuristica scolpita in resina ad alta densità placcata in oro." },
+        p5: { name: "Occhiali da sole in titanio", desc: "Protezione UV400 e montatura ultraleggera in titanio di grado aerospaziale." },
+        p6: { name: "Felpa oversize OMNIA", desc: "Cotone pesante 100% biologico con ricami di alta qualità." }
+    },
+    de: {
+        addBtn: "In den Warenkorb",
+        p1: { name: "Nächtliche Lederjacke", desc: "Handverlesene italienische Lederjacke mit Metallakzenten und Seidenfutter." },
+        p2: { name: "OMNIA Street Pro Sneaker", desc: "Limitierte Edition mit stoßdämpfender Sohle und nachhaltigen Materialien." },
+        p3: { name: "Minimalistische Chronographenuhr", desc: "Präzises Schweizer Uhrwerk mit kratzfestem Saphirglas." },
+        p4: { name: "Abstrakte Cyber-Skulptur", desc: "Futuristisches Kunstwerk aus hochdichtem, goldbeschichtetem Harz." },
+        p5: { name: "Titan-Sonnenbrille", desc: "UV400-Schutz mit ultraleichtem Rahmen aus Titan in Luftfahrtqualität." },
+        p6: { name: "OMNIA Oversize-Hoodie", desc: "Schwere, 100 % biologische Baumwolle mit hochwertiger Stickerei." }
     }
+
 };
 
 let cart = [];
@@ -207,13 +245,74 @@ function updateCulturalNotice() {
     }
 }
 
+
+// OMNIA: traducciones de productos por idioma, guardadas localmente.
+const OMNIA_PRINTIFY_TRANSLATIONS_KEY = "omnia_printify_translations_v2";
+const omniaPrintifyPending = Object.create(null);
+let omniaPrintifyQueue = Promise.resolve();
+let omniaPrintifyCache = {};
+
+try {
+    omniaPrintifyCache = JSON.parse(
+        localStorage.getItem(OMNIA_PRINTIFY_TRANSLATIONS_KEY) || "{}"
+    ) || {};
+} catch (_) {
+    omniaPrintifyCache = {};
+}
+
+function getPrintifyEnglishEntry(product) {
+    return null;
+}
+
+function getProductDisplayName(product, fallback) {
+    return fallback;
+}
+
+function getProductDisplayDescription(product, fallback) {
+    return fallback;
+}
+
+function ensurePrintifyEnglishTranslation(product) {
+    return Promise.resolve();
+}
+
+function refreshOpenProductTranslation() {
+    if (!selectedProduct) return;
+
+    const modal = document.getElementById("productModal");
+    if (!modal || modal.style.display !== "flex") return;
+
+    const langData = i18n[currentLang] || i18n.es;
+    const prodLang = langData[selectedProduct.key] ||
+        i18n.es[selectedProduct.key] || {};
+
+    const name = getProductDisplayName(
+        selectedProduct,
+        selectedProduct.titleCustom || prodLang.name || selectedProduct.key
+    );
+
+    const description = getProductDisplayDescription(
+        selectedProduct,
+        selectedProduct.descCustom || prodLang.desc || ""
+    );
+
+    const titleElement = document.getElementById("modalProductTitle");
+    const descElement = document.getElementById("modalProductDesc");
+
+    if (titleElement) titleElement.textContent = name;
+    if (descElement) descElement.textContent = description;
+
+    void ensurePrintifyEnglishTranslation(selectedProduct);
+}
+
 function renderProducts(items) {
     const grid = document.getElementById('productGrid');
     const langData = i18n[currentLang] || i18n['es'];
     
     grid.innerHTML = items.map(p => {
+        void ensurePrintifyEnglishTranslation(p);
         const prodLang = langData[p.key] || i18n['es'][p.key] || {};
-        const productName = p.titleCustom || prodLang.name || p.key;
+        const productName = getProductDisplayName(p, p.titleCustom || prodLang.name || p.key);
         const price = (p.priceUSD * rates[currentCurrency]).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return `
             <div class="card" onclick="openProductModal(${p.id})">
@@ -230,25 +329,331 @@ function renderProducts(items) {
 }
 
 function updateStaticTranslations() {
-    const langData = i18n[currentLang] || i18n['es'];
-    document.getElementById('searchInput').placeholder = langData.searchPlaceholder;
-    document.querySelector('.cart-btn').innerHTML = `${langData.cartText} <span id="cartCount" class="badge">${cart.length}</span>`;
-    document.querySelector('.hero-subtitle').textContent = langData.heroSubtitle;
-    document.querySelector('.hero-content h1').textContent = langData.heroTitle;
-    document.querySelector('.hero-content p').textContent = langData.heroDesc;
-    document.querySelector('.hero-btn').textContent = langData.heroBtn;
-    document.querySelector('.vip-badge').textContent = langData.vipBadge;
-    document.querySelector('.newsletter-card h2').textContent = langData.newsTitle;
-    document.querySelector('.newsletter-card p').textContent = langData.newsDesc;
-    document.querySelector('.newsletter-form input').placeholder = langData.newsPlaceholder;
-    document.querySelector('.newsletter-form button').textContent = langData.newsBtn;
+    const en = currentLang === "en";
+    const t = en ? {
+        search: "Search fashion, art, accessories...",
+        cart: "Cart",
+        menu: "Private Space",
+        home: "Home",
+        discover: "Discover",
+        printedArt: "Printed Art",
+        fashion: "Fashion",
+        shoes: "Footwear",
+        accessories: "Accessories",
+        service: "OMNIA Services",
+        contact: "Contact & Support",
+        shipping: "Shipping & Logistics",
+        returns: "Returns & Warranty",
+        privacy: "Privacy & Data",
+        terms: "Terms of Service",
+        legal: "Legal Notice",
+        heroSubtitle: "ART · FASHION · STYLE · LIFE",
+        heroTitle: "Everything that inspires you,<br>all in one place.",
+        heroDesc: "A new global experience where art, fashion and design come together.",
+        heroPrimary: "Explore Collection",
+        heroSecondary: "Discover OMNIA",
+        introEyebrow: "THE OMNIA EXPERIENCE",
+        introTitle: "One platform.<br>Infinite possibilities.",
+        introDesc: "Explore curated pieces, exclusive collections and new ways to express your style through an experience created for you.",
+        catalogEyebrow: "CURATED COLLECTION",
+        catalogTitle: "Discover the collection",
+        all: "All",
+        men: "Men's Clothing",
+        women: "Women's Clothing",
+        kids: "Children's Clothing",
+        menShoes: "Men's Footwear",
+        womenShoes: "Women's Footwear",
+        prints: "Printed Wall Art",
+        newsletterBadge: "OMNIA PRIVATE CLUB",
+        newsletterTitle: "Enter the private circle.",
+        newsletterDesc: "Receive updates, special collections and early access to new OMNIA pieces.",
+        email: "Your email address",
+        subscribe: "Request Access",
+        explore: "Explore",
+        collections: "Collections",
+        attention: "Customer Care",
+        information: "Information",
+        secure: "Secure Shopping",
+        international: "International Shipping",
+        refunds: "Refunds",
+        data: "Data Protection",
+        payments: "SECURELY PROCESSED PAYMENTS",
+        rights: "All rights reserved.",
+        quantity: "Quantity",
+        addCart: "Add to Cart",
+        checkout: "Secure Checkout",
+        protected: "Protected Payment"
+    } : {
+        search: "Buscar moda, arte, accesorios...",
+        cart: "Carrito",
+        menu: "Espacio Privado",
+        home: "Inicio",
+        discover: "Descubrir",
+        printedArt: "Arte impreso",
+        fashion: "Moda",
+        shoes: "Calzado",
+        accessories: "Accesorios",
+        service: "Servicio OMNIA",
+        contact: "Contacto y Soporte",
+        shipping: "Envíos y Logística",
+        returns: "Devoluciones y Garantía",
+        privacy: "Privacidad y Datos",
+        terms: "Términos del Servicio",
+        legal: "Aviso Legal",
+        heroSubtitle: "ARTE · MODA · ESTILO · VIDA",
+        heroTitle: "Todo lo que te inspira,<br>en un solo lugar.",
+        heroDesc: "Una nueva experiencia global donde el arte, la moda y el diseño se encuentran.",
+        heroPrimary: "Explorar colección",
+        heroSecondary: "Descubrir OMNIA",
+        introEyebrow: "THE OMNIA EXPERIENCE",
+        introTitle: "Una plataforma.<br>Infinitas posibilidades.",
+        introDesc: "Explora piezas seleccionadas, colecciones exclusivas y nuevas formas de expresar tu estilo desde una experiencia creada para ti.",
+        catalogEyebrow: "CURATED COLLECTION",
+        catalogTitle: "Descubre la colección",
+        all: "Todo",
+        men: "Ropa de hombre",
+        women: "Ropa de mujer",
+        kids: "Ropa de niños",
+        menShoes: "Calzado de hombre",
+        womenShoes: "Calzado de mujer",
+        prints: "Cuadros impresos",
+        newsletterBadge: "OMNIA PRIVATE CLUB",
+        newsletterTitle: "Entra en el círculo privado.",
+        newsletterDesc: "Recibe novedades, colecciones especiales y acceso anticipado a nuevas piezas de OMNIA.",
+        email: "Tu correo electrónico",
+        subscribe: "Solicitar acceso",
+        explore: "Explorar",
+        collections: "Colecciones",
+        attention: "Atención",
+        information: "Información",
+        secure: "Compra segura",
+        international: "Envíos internacionales",
+        refunds: "Reembolsos",
+        data: "Protección de datos",
+        payments: "PAGOS PROCESADOS DE FORMA SEGURA",
+        rights: "Todos los derechos reservados.",
+        quantity: "Cantidad",
+        addCart: "Añadir al carrito",
+        checkout: "Checkout seguro",
+        protected: "Pago protegido"
+    };
+
+
+    const localeOverrides = {
+        fr: {
+            search:"Rechercher mode, art, accessoires...", cart:"Panier", menu:"Espace privé",
+            home:"Accueil", discover:"Découvrir", printedArt:"Art imprimé", fashion:"Mode",
+            shoes:"Chaussures", accessories:"Accessoires", service:"Services OMNIA",
+            contact:"Contact et assistance", shipping:"Expédition et logistique",
+            returns:"Retours et garantie", privacy:"Confidentialité et données",
+            terms:"Conditions de service", legal:"Mentions légales",
+            heroSubtitle:"ART · MODE · STYLE · VIE",
+            heroTitle:"Tout ce qui vous inspire,<br>en un seul endroit.",
+            heroDesc:"Une nouvelle expérience mondiale où l’art, la mode et le design se rencontrent.",
+            heroPrimary:"Explorer la collection", heroSecondary:"Découvrir OMNIA",
+            introEyebrow:"L’EXPÉRIENCE OMNIA",
+            introTitle:"Une plateforme.<br>Des possibilités infinies.",
+            introDesc:"Découvrez des pièces sélectionnées, des collections exclusives et de nouvelles façons d’exprimer votre style.",
+            catalogEyebrow:"COLLECTION SÉLECTIONNÉE", catalogTitle:"Découvrez la collection",
+            all:"Tout", men:"Vêtements pour hommes", women:"Vêtements pour femmes",
+            kids:"Vêtements pour enfants", menShoes:"Chaussures pour hommes",
+            womenShoes:"Chaussures pour femmes", prints:"Art imprimé",
+            newsletterBadge:"CLUB PRIVÉ OMNIA", newsletterTitle:"Entrez dans le cercle privé.",
+            newsletterDesc:"Recevez les nouveautés, les collections spéciales et un accès anticipé.",
+            email:"Votre adresse e-mail", subscribe:"Demander l’accès",
+            explore:"Explorer", collections:"Collections", attention:"Service client",
+            information:"Informations", secure:"Achats sécurisés",
+            international:"Livraison internationale", refunds:"Remboursements",
+            data:"Protection des données", payments:"PAIEMENTS TRAITÉS EN TOUTE SÉCURITÉ",
+            rights:"Tous droits réservés.", quantity:"Quantité",
+            addCart:"Ajouter au panier", checkout:"Paiement sécurisé", protected:"Paiement protégé"
+        },
+        pt: {
+            search:"Pesquisar moda, arte, acessórios...", cart:"Carrinho", menu:"Espaço privado",
+            home:"Início", discover:"Descobrir", printedArt:"Arte impressa", fashion:"Moda",
+            shoes:"Calçados", accessories:"Acessórios", service:"Serviços OMNIA",
+            contact:"Contato e suporte", shipping:"Envio e logística",
+            returns:"Devoluções e garantia", privacy:"Privacidade e dados",
+            terms:"Termos de serviço", legal:"Aviso legal",
+            heroSubtitle:"ARTE · MODA · ESTILO · VIDA",
+            heroTitle:"Tudo o que inspira você,<br>em um só lugar.",
+            heroDesc:"Uma nova experiência global onde arte, moda e design se encontram.",
+            heroPrimary:"Explorar coleção", heroSecondary:"Descobrir OMNIA",
+            introEyebrow:"A EXPERIÊNCIA OMNIA",
+            introTitle:"Uma plataforma.<br>Possibilidades infinitas.",
+            introDesc:"Explore peças selecionadas, coleções exclusivas e novas formas de expressar seu estilo.",
+            catalogEyebrow:"COLEÇÃO SELECIONADA", catalogTitle:"Descubra a coleção",
+            all:"Tudo", men:"Roupas masculinas", women:"Roupas femininas",
+            kids:"Roupas infantis", menShoes:"Calçados masculinos",
+            womenShoes:"Calçados femininos", prints:"Arte impressa",
+            newsletterBadge:"CLUBE PRIVADO OMNIA", newsletterTitle:"Entre no círculo privado.",
+            newsletterDesc:"Receba novidades, coleções especiais e acesso antecipado.",
+            email:"Seu endereço de e-mail", subscribe:"Solicitar acesso",
+            explore:"Explorar", collections:"Coleções", attention:"Atendimento",
+            information:"Informações", secure:"Compra segura",
+            international:"Envio internacional", refunds:"Reembolsos",
+            data:"Proteção de dados", payments:"PAGAMENTOS PROCESSADOS COM SEGURANÇA",
+            rights:"Todos os direitos reservados.", quantity:"Quantidade",
+            addCart:"Adicionar ao carrinho", checkout:"Finalização segura", protected:"Pagamento protegido"
+        },
+        it: {
+            search:"Cerca moda, arte, accessori...", cart:"Carrello", menu:"Spazio privato",
+            home:"Home", discover:"Scopri", printedArt:"Arte stampata", fashion:"Moda",
+            shoes:"Calzature", accessories:"Accessori", service:"Servizi OMNIA",
+            contact:"Contatti e assistenza", shipping:"Spedizioni e logistica",
+            returns:"Resi e garanzia", privacy:"Privacy e dati",
+            terms:"Termini del servizio", legal:"Note legali",
+            heroSubtitle:"ARTE · MODA · STILE · VITA",
+            heroTitle:"Tutto ciò che ti ispira,<br>in un unico luogo.",
+            heroDesc:"Una nuova esperienza globale in cui arte, moda e design si incontrano.",
+            heroPrimary:"Esplora la collezione", heroSecondary:"Scopri OMNIA",
+            introEyebrow:"L’ESPERIENZA OMNIA",
+            introTitle:"Una piattaforma.<br>Possibilità infinite.",
+            introDesc:"Scopri articoli selezionati, collezioni esclusive e nuovi modi per esprimere il tuo stile.",
+            catalogEyebrow:"COLLEZIONE SELEZIONATA", catalogTitle:"Scopri la collezione",
+            all:"Tutto", men:"Abbigliamento uomo", women:"Abbigliamento donna",
+            kids:"Abbigliamento bambini", menShoes:"Calzature uomo",
+            womenShoes:"Calzature donna", prints:"Arte stampata",
+            newsletterBadge:"OMNIA PRIVATE CLUB", newsletterTitle:"Entra nel circolo privato.",
+            newsletterDesc:"Ricevi novità, collezioni speciali e accesso anticipato.",
+            email:"Il tuo indirizzo e-mail", subscribe:"Richiedi accesso",
+            explore:"Esplora", collections:"Collezioni", attention:"Assistenza clienti",
+            information:"Informazioni", secure:"Acquisti sicuri",
+            international:"Spedizioni internazionali", refunds:"Rimborsi",
+            data:"Protezione dei dati", payments:"PAGAMENTI ELABORATI IN SICUREZZA",
+            rights:"Tutti i diritti riservati.", quantity:"Quantità",
+            addCart:"Aggiungi al carrello", checkout:"Pagamento sicuro", protected:"Pagamento protetto"
+        },
+        de: {
+            search:"Mode, Kunst, Accessoires suchen...", cart:"Warenkorb", menu:"Privater Bereich",
+            home:"Startseite", discover:"Entdecken", printedArt:"Druckkunst", fashion:"Mode",
+            shoes:"Schuhe", accessories:"Accessoires", service:"OMNIA Services",
+            contact:"Kontakt und Support", shipping:"Versand und Logistik",
+            returns:"Rückgabe und Garantie", privacy:"Datenschutz",
+            terms:"Nutzungsbedingungen", legal:"Impressum",
+            heroSubtitle:"KUNST · MODE · STIL · LEBEN",
+            heroTitle:"Alles, was dich inspiriert,<br>an einem Ort.",
+            heroDesc:"Ein neues globales Erlebnis, in dem Kunst, Mode und Design zusammenkommen.",
+            heroPrimary:"Kollektion entdecken", heroSecondary:"OMNIA entdecken",
+            introEyebrow:"DAS OMNIA ERLEBNIS",
+            introTitle:"Eine Plattform.<br>Unendliche Möglichkeiten.",
+            introDesc:"Entdecke ausgewählte Produkte, exklusive Kollektionen und neue Möglichkeiten, deinen Stil auszudrücken.",
+            catalogEyebrow:"KURATIERTE KOLLEKTION", catalogTitle:"Kollektion entdecken",
+            all:"Alle", men:"Herrenbekleidung", women:"Damenbekleidung",
+            kids:"Kinderbekleidung", menShoes:"Herrenschuhe",
+            womenShoes:"Damenschuhe", prints:"Druckkunst",
+            newsletterBadge:"OMNIA PRIVATE CLUB", newsletterTitle:"Werde Teil des privaten Kreises.",
+            newsletterDesc:"Erhalte Neuigkeiten, besondere Kollektionen und frühzeitigen Zugang.",
+            email:"Deine E-Mail-Adresse", subscribe:"Zugang anfordern",
+            explore:"Entdecken", collections:"Kollektionen", attention:"Kundenservice",
+            information:"Informationen", secure:"Sicher einkaufen",
+            international:"Internationaler Versand", refunds:"Rückerstattungen",
+            data:"Datenschutz", payments:"SICHER ABGEWICKELTE ZAHLUNGEN",
+            rights:"Alle Rechte vorbehalten.", quantity:"Menge",
+            addCart:"In den Warenkorb", checkout:"Sicher bezahlen", protected:"Geschützte Zahlung"
+        }
+    };
+    Object.assign(t, localeOverrides[currentLang] || {});
+
+    document.documentElement.lang = currentLang;
+
+    const setText = (selector, value) => {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = value;
+    };
+    const setHTML = (selector, value) => {
+        const el = document.querySelector(selector);
+        if (el) el.innerHTML = value;
+    };
+
+    const search = document.getElementById("searchInput");
+    if (search) search.placeholder = t.search;
+
+    const cartButton = document.querySelector(".cart-btn");
+    const existingCount = document.getElementById("cartCount");
+    const cartCountText = existingCount ? existingCount.textContent : "0";
+    if (cartButton) cartButton.innerHTML = `${t.cart} <span id="cartCount" class="badge">${cartCountText}</span>`;
+
+    setText(".sidebar-header h3", t.menu);
+    setText(".sidebar-links li:nth-child(1) a", t.home);
+    setText(".sidebar-links li:nth-child(2) a", t.discover);
+    setText(".sidebar-links li:nth-child(3) a", t.printedArt);
+    setText(".sidebar-links li:nth-child(4) a", t.fashion);
+    setText(".sidebar-links li:nth-child(5) a", t.shoes);
+    setText(".sidebar-links li:nth-child(6) a", t.accessories);
+    setText(".sidebar-title", t.service);
+
+    const sideLinks = document.querySelectorAll(".sidebar-links li a");
+    const sideText = [t.home, t.discover, t.printedArt, t.fashion, t.shoes, t.accessories, t.contact, t.shipping, t.returns, t.privacy, t.terms, t.legal];
+    sideLinks.forEach((el, i) => {
+        if (sideText[i]) el.textContent = sideText[i];
+    });
+
+    setText(".hero-subtitle", t.heroSubtitle);
+    setHTML(".hero-content h1", t.heroTitle);
+    setText(".hero-content p", t.heroDesc);
+    setText(".hero-btn", t.heroPrimary);
+    setText(".hero-secondary-btn", t.heroSecondary);
+    setText(".brand-intro .section-eyebrow", t.introEyebrow);
+    setHTML(".brand-intro h2", t.introTitle);
+    setText(".brand-intro p", t.introDesc);
+    setText(".catalog-heading .section-eyebrow", t.catalogEyebrow);
+    setText(".catalog-heading h2", t.catalogTitle);
+
+    const categories = {
+        "Todo": t.all,
+        "Ropa de hombre": t.men,
+        "Ropa de mujer": t.women,
+        "Ropa de niños": t.kids,
+        "Calzado de hombre": t.menShoes,
+        "Calzado de mujer": t.womenShoes,
+        "Accesorios": t.accessories,
+        "Cuadros impresos": t.prints
+    };
+    document.querySelectorAll(".cat-btn").forEach(el => {
+        const key = el.getAttribute("data-category");
+        if (categories[key]) el.textContent = categories[key];
+    });
+
+    setText(".newsletter-card .vip-badge", t.newsletterBadge);
+    setText(".newsletter-card h2", t.newsletterTitle);
+    setText(".newsletter-card p", t.newsletterDesc);
+    const email = document.querySelector(".newsletter-form input");
+    if (email) email.placeholder = t.email;
+    setText(".newsletter-form button", t.subscribe);
+
+    const footerHeadings = document.querySelectorAll(".footer-col h4");
+    [t.explore, t.attention, t.information].forEach((value, i) => {
+        if (footerHeadings[i]) footerHeadings[i].textContent = value;
+    });
+    const footerLinks = document.querySelectorAll(".footer-col a");
+    const footerText = [t.home, t.collections, t.printedArt, t.fashion, t.shoes, t.international, t.refunds, t.data, t.terms, "Control Center"];
+    footerLinks.forEach((el, i) => {
+        if (footerText[i]) el.textContent = footerText[i];
+    });
+    setText(".footer-secure", "🔒 " + t.secure);
+    setText(".footer-payment-row > span", t.payments);
+    const footerBottom = document.querySelector(".footer-bottom p");
+    if (footerBottom) footerBottom.textContent = "© 2026 OMNIA Global. " + t.rights;
+
+    const qtyLabel = document.querySelector(".qty-selector label");
+    if (qtyLabel) qtyLabel.textContent = t.quantity;
+    const addLarge = document.querySelector(".dark-add-btn");
+    if (addLarge) addLarge.textContent = t.addCart;
+    setText(".express-title", t.checkout);
+    const protectedPayment = document.querySelector(".secure-payment-note strong");
+    if (protectedPayment) protectedPayment.textContent = t.protected;
+
 }
 
 function changeLang() {
-    currentLang = document.getElementById('langSelect').value;
+    const selector = document.getElementById("langSelect");
+    const supportedLanguages = ["es", "en", "fr", "pt", "it", "de"];
+    currentLang = selector && supportedLanguages.includes(selector.value) ? selector.value : "es";
     updateStaticTranslations();
     renderProducts(products);
     updateCartUI();
+    refreshOpenProductTranslation();
 }
 
 function changeCurrency() {
@@ -867,15 +1272,15 @@ function openProductModal(id) {
     const prodLang = langData[selectedProduct.key] ||
         (i18n["es"] && i18n["es"][selectedProduct.key]) || {};
 
-    const productName =
-        selectedProduct.titleCustom ||
-        prodLang.name ||
-        selectedProduct.key;
+    const productName = getProductDisplayName(
+        selectedProduct,
+        selectedProduct.titleCustom || prodLang.name || selectedProduct.key
+    );
 
-    const productDescription =
-        selectedProduct.descCustom ||
-        prodLang.desc ||
-        "";
+    const productDescription = getProductDisplayDescription(
+        selectedProduct,
+        selectedProduct.descCustom || prodLang.desc || ""
+    );
 
     const price = (
         selectedProduct.priceUSD * rates[currentCurrency]
@@ -1342,13 +1747,22 @@ function filterCategory(cat) {
 }
 
 function filterProducts() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
-    const langData = i18n[currentLang] || i18n['es'];
+    const input = document.getElementById("searchInput");
+    const query = String(input ? input.value : "").toLowerCase().trim();
+
     const filtered = products.filter(p => {
-        const prodLang = langData[p.key] || i18n['es'][p.key] || {};
-        const productName = p.titleCustom || prodLang.name || p.key;
-        return prodLang.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query);
+        const langData = i18n[currentLang] || i18n.es;
+        const prodLang = langData[p.key] || i18n.es[p.key] || {};
+        const originalName = String(p.titleCustom || prodLang.name || p.key || "");
+        const displayedName = String(getProductDisplayName(p, originalName) || "");
+        const category = String(p.category || getPrintifyCategory(p) || "");
+
+        return !query ||
+            displayedName.toLowerCase().includes(query) ||
+            originalName.toLowerCase().includes(query) ||
+            category.toLowerCase().includes(query);
     });
+
     renderProducts(filtered);
 }
 
@@ -1395,13 +1809,16 @@ function updateCartUI() {
     );
 
     if (!cart.length) {
-        cartItems.innerHTML = '<div class="cart-empty">Tu carrito está vacío.</div>';
+        cartItems.innerHTML = '<div class="cart-empty">' + (currentLang === "en" ? "Your cart is empty." : "Tu carrito está vacío.") + '</div>';
     } else {
         cartItems.innerHTML = cart.map((product, index) => {
             const translation = langData[product.key] ||
                 (i18n["es"] && i18n["es"][product.key]) || {};
-            const name = product.titleCustom || translation.name ||
-                product.name || product.key || "Producto OMNIA";
+            const name = getProductDisplayName(
+                product,
+                product.titleCustom || translation.name ||
+                product.name || product.key || "Producto OMNIA"
+            );
 
             const image = product.image ||
                 (Array.isArray(product.images) ? product.images[0] : "") || "";
@@ -1439,7 +1856,7 @@ function updateCartUI() {
 
                 return optionValue !== undefined && optionValue !== null &&
                     String(optionValue).trim()
-                    ? `${optionName || "Opción"}: ${optionValue}`
+                    ? `${optionName || (currentLang === "en" ? "Option" : "Opción")}: ${optionValue}`
                     : "";
             }).filter(Boolean);
 

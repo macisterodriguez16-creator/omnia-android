@@ -1258,3 +1258,43 @@ body.sidebar-collapsed .nav-item {
     white-space: normal;
     overflow-wrap: anywhere;
 }
+
+
+.omnia-product-editor {
+    width: min(760px, 96vw);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.omnia-product-editor .admin-modal-body {
+    display: grid;
+    gap: 14px;
+}
+.omnia-product-editor label {
+    display: grid;
+    gap: 6px;
+    font-weight: 600;
+}
+.omnia-product-editor input,
+.omnia-product-editor textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #b99a56;
+    border-radius: 8px;
+    background: #111;
+    color: #f5f0e5;
+    font: inherit;
+}
+.omnia-product-editor textarea {
+    resize: vertical;
+}
+.omnia-editor-note {
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+.omnia-product-editor .admin-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}

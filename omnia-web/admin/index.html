@@ -416,10 +416,20 @@
                     <span class="section-label">CONEXIONES</span>
                     <h2>Integraciones</h2>
                     <p>Administra las conexiones entre OMNIA y plataformas externas.</p>
+                    <div class="channel-management-card">
+                        <div class="channel-big-logo">P</div>
+                        <div>
+                            <h3>Printify</h3>
+                            <p>Sincroniza los productos de tu tienda Printify con el catálogo de OMNIA.</p>
+                            <p id="printify-sync-status" role="status" aria-live="polite">La conexión utiliza las credenciales configuradas en el servidor.</p>
+                            <button id="printify-sync-button" class="primary-button" type="button" onclick="syncAllPrintifyProducts()">Sincronizar Printify</button>
+                            <button id="printify-refresh-button" class="secondary-button" type="button" onclick="refreshOmniaProducts()">Actualizar productos del panel</button>
+                        </div>
+                    </div>
                     <div class="coming-card">
                         <div class="coming-icon">⌘</div>
-                        <h3>Integraciones</h3>
-                        <p>Printify, Shopify, eBay, Amazon y Bonanza.</p>
+                        <h3>Otros canales</h3>
+                        <p>Shopify, eBay, Amazon y Bonanza todavía requieren sus propias integraciones.</p>
                     </div>
                 </div>
             </section>
