@@ -4,7 +4,9 @@
   "webDir": "omnia-web",
   "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "https"
+    "url": "https://omnia.macisterodriguez16.workers.dev/",
+    "androidScheme": "https",
+    "cleartext": false
   },
   "plugins": {
     "SplashScreen": {
