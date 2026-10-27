@@ -291,6 +291,12 @@
                     <span class="section-label">CATÁLOGO</span>
                     <h2>Productos</h2>
                     <p>Gestiona productos, variantes, imágenes y publicaciones.</p>
+                    <div class="product-management-toolbar" aria-label="Herramientas del catálogo">
+                        <button class="primary-button" type="button" onclick="createManualProduct()">+ Crear producto</button>
+                        <button class="secondary-button" type="button" onclick="syncAllPrintifyProducts()">Sincronizar Printify</button>
+                        <button class="secondary-button" type="button" onclick="setupPrintifyWebhook()">Configurar webhook</button>
+                    </div>
+                    <p class="product-management-message" id="productManagementMessage" role="status" aria-live="polite"></p>
                     <div class="admin-products-container"></div>
                 </div>
             </section>
@@ -446,4 +452,4 @@
 <script src="admin.js"></script>
 
 </body>
-</html>
+                        </html>
