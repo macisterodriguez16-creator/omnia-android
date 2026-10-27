@@ -1074,7 +1074,7 @@ body.sidebar-collapsed .nav-item {
     max-height: 205px;
     box-sizing: border-box;
     overflow: hidden;
-    border-radius: 8px;
+       border-radius: 8px;
     background: #202020;
 }
 .admin-products-container .product-admin-image img {
@@ -1257,4 +1257,32 @@ body.sidebar-collapsed .nav-item {
     max-width: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
+}
+
+
+/* Gestión ampliada del catálogo: mantiene la identidad visual oscura y dorada. */
+.product-management-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 22px 0 8px;
+}
+.product-management-message {
+    min-height: 20px;
+    margin: 8px 0 14px;
+    color: #d4af37;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.product-management-message.is-error { color: #ff8f8f; }
+.admin-products-container .product-admin-actions .product-delete-button {
+    border-color: rgba(220, 90, 90, .45);
+    color: #ffb0b0;
+}
+.admin-products-container .product-admin-actions .product-delete-button:hover {
+    background: rgba(150, 35, 35, .18);
+}
+@media (max-width: 600px) {
+    .product-management-toolbar { flex-direction: column; }
+    .product-management-toolbar button { width: 100%; }
 }
