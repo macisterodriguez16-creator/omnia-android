@@ -1074,7 +1074,7 @@ body.sidebar-collapsed .nav-item {
     max-height: 205px;
     box-sizing: border-box;
     overflow: hidden;
-       border-radius: 8px;
+    border-radius: 8px;
     background: #202020;
 }
 .admin-products-container .product-admin-image img {
@@ -1286,3 +1286,29 @@ body.sidebar-collapsed .nav-item {
     .product-management-toolbar { flex-direction: column; }
     .product-management-toolbar button { width: 100%; }
 }
+
+/* Editor de producto OMNIA: galería local, zoom y campos editables */
+.admin-products-container .product-admin-card { cursor: pointer; }
+.admin-products-container .product-admin-card:focus-visible { outline: 2px solid var(--gold, #d4af37); outline-offset: 3px; }
+.product-open-hint { margin: 4px 0 0; font-size: 12px; opacity: .68; }
+.admin-products-container .product-admin-actions { position: relative; z-index: 2; }
+.omnia-product-editor-backdrop,.omnia-image-zoom-backdrop { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:22px; background:rgba(3,4,8,.82); backdrop-filter:blur(8px); }
+.omnia-product-editor { width:min(1120px,100%); max-height:94vh; overflow:auto; border:1px solid rgba(212,175,55,.28); border-radius:18px; background:var(--panel,#111114); color:var(--text,#f4f4f5); box-shadow:0 28px 90px rgba(0,0,0,.5); }
+.omnia-editor-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:24px 28px; border-bottom:1px solid rgba(255,255,255,.09); }
+.omnia-editor-header h2 { margin:5px 0; font-size:24px; }
+.omnia-editor-header p,.omnia-editor-note,.omnia-editor-stock-note { margin:5px 0 0; color:var(--muted,#a1a1aa); font-size:13px; }
+.omnia-editor-close { border:0; background:transparent; color:inherit; font-size:32px; cursor:pointer; line-height:1; }
+.omnia-editor-content { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:28px; padding:24px 28px 28px; }
+.omnia-editor-main-image { position:relative; min-height:300px; height:clamp(300px,42vh,460px); display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:14px; background:radial-gradient(ellipse at center,#29292f,#17171b 72%); }
+.omnia-editor-main-image>img { max-width:100%; max-height:100%; object-fit:contain; }
+.omnia-editor-image-count { position:absolute; left:12px; top:12px; padding:5px 9px; border-radius:20px; background:rgba(0,0,0,.7); color:white; font-size:12px; }
+.omnia-editor-zoom,.omnia-editor-image-delete,.omnia-editor-prev,.omnia-editor-next { position:absolute; display:grid; place-items:center; width:38px; height:38px; border:1px solid rgba(255,255,255,.18); border-radius:50%; background:rgba(10,10,13,.82); color:white; font-size:24px; cursor:pointer; }
+.omnia-editor-zoom { right:12px; bottom:12px; }.omnia-editor-image-delete { right:12px; top:12px; background:#a92828; }.omnia-editor-prev { left:12px; top:50%; }.omnia-editor-next { right:12px; top:50%; }
+.omnia-editor-no-image { padding:24px; text-align:center; color:var(--muted,#a1a1aa); }
+.omnia-editor-thumbnails { display:flex; gap:9px; overflow-x:auto; padding:13px 1px; }
+.omnia-editor-thumb { position:relative; flex:0 0 72px; width:72px; height:76px; padding:4px; overflow:hidden; border:1px solid rgba(255,255,255,.14); border-radius:9px; background:#202025; cursor:pointer; }
+.omnia-editor-thumb.active { border:2px solid var(--gold,#d4af37); }.omnia-editor-thumb img { width:100%; height:100%; object-fit:contain; }.omnia-editor-thumb span { position:absolute; left:4px; bottom:4px; padding:1px 5px; border-radius:5px; background:rgba(0,0,0,.7); color:white; font-size:10px; }
+.omnia-editor-add { display:flex; align-items:center; justify-content:center; gap:9px; min-height:48px; border:1px dashed var(--gold,#d4af37); border-radius:10px; color:var(--gold,#d4af37); cursor:pointer; }.omnia-editor-add span { font-size:13px; }.omnia-editor-note { line-height:1.5; }
+.omnia-editor-fields { display:flex; flex-direction:column; gap:17px; min-width:0; }.omnia-editor-fields label { display:flex; flex-direction:column; gap:7px; font-size:13px; font-weight:600; }.omnia-editor-fields input,.omnia-editor-fields textarea { width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,.15); border-radius:9px; padding:12px 13px; background:var(--bg,#0b0b0d); color:inherit; font:inherit; font-weight:400; }.omnia-editor-fields textarea { min-height:150px; resize:vertical; line-height:1.5; }.omnia-editor-fields input:focus,.omnia-editor-fields textarea:focus { outline:1px solid var(--gold,#d4af37); border-color:var(--gold,#d4af37); }.omnia-editor-counter { align-self:flex-end; color:var(--muted,#a1a1aa); font-size:12px; font-weight:400; }.omnia-editor-two-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }.omnia-editor-footer { display:flex; justify-content:flex-end; gap:10px; margin-top:auto; padding-top:12px; }
+.omnia-image-zoom-backdrop { z-index:10010; overflow:hidden; }.omnia-image-zoom-backdrop>img { max-width:90vw; max-height:84vh; object-fit:contain; transition:transform .12s ease; user-select:none; }.omnia-image-zoom-close { position:absolute; right:22px; top:14px; border:0; background:transparent; color:white; font-size:40px; cursor:pointer; }.omnia-image-zoom-controls { position:absolute; bottom:22px; display:flex; gap:8px; }.omnia-image-zoom-controls button { min-width:48px; padding:10px; border:1px solid #555; border-radius:9px; background:#19191f; color:white; cursor:pointer; }
+@media(max-width:760px) { .omnia-product-editor-backdrop { padding:8px; align-items:flex-start; }.omnia-product-editor { max-height:98vh; border-radius:13px; }.omnia-editor-header { padding:18px; }.omnia-editor-content { grid-template-columns:1fr; gap:20px; padding:16px 18px 20px; }.omnia-editor-main-image { height:300px; min-height:240px; }.omnia-editor-two-fields { grid-template-columns:1fr 1fr; }.omnia-editor-footer button { flex:1; } }
