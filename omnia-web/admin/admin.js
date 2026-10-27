@@ -457,6 +457,7 @@ async function saveTopProductChannels() {
 }
 
 function renderAdminProducts(products) {
+    window.__omniaProductsById = Object.create(null);
     const container = document.querySelector(
         ".admin-products-container"
     );
@@ -486,6 +487,7 @@ function renderAdminProducts(products) {
                 product.printifyId ||
                 product.id ||
                 "";
+            window.__omniaProductsById[String(id)] = product;
 
             const title =
                 product.title ||
@@ -573,7 +575,7 @@ if (!image && product.payload) {
                 "disponible";
 
             return `
-                <div class="product-admin-card">
+                <div class="product-admin-card" role="button" tabindex="0" onclick="openProductEditor('${encodeURIComponent(String(id))}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProductEditor('${encodeURIComponent(String(id))}')}">
 
                     <div class="product-admin-image">
                         ${
@@ -585,6 +587,7 @@ if (!image && product.payload) {
 
                     <div class="product-admin-info">
                         <h3>${escapeHtml(title)}</h3>
+                        <p class="product-open-hint">Abrir para editar producto</p>
 
                         <p class="product-admin-id">
                             ID: ${escapeHtml(String(id))}
@@ -604,27 +607,27 @@ if (!image && product.payload) {
 <div class="product-admin-actions">
     <button
         class="primary-button"
-        onclick="openProductChannels('${encodeURIComponent(String(id))}')"
+        onclick="event.stopPropagation();openProductChannels('${encodeURIComponent(String(id))}')"
     >
         Gestionar publicación
     </button>
 
     <button
         class="secondary-button omnia-withdraw-button"
-        onclick="withdrawProductFromOmnia('${encodeURIComponent(String(id))}')"
+        onclick="event.stopPropagation();withdrawProductFromOmnia('${encodeURIComponent(String(id))}')"
     >
-        Retirar de OMNIA
+        Eliminar publicación de OMNIA
     </button>
 
     <button
         class="secondary-button product-mockup-button"
-        onclick="openProductMockup('${encodeURIComponent(String(id))}')"
+        onclick="event.stopPropagation();openProductMockup('${encodeURIComponent(String(id))}')"
     >
         Elegir maqueta
     </button>
-    <button class="secondary-button" onclick="editOmniaProduct('${encodeURIComponent(String(id))}')">Editar ficha</button>
-    <button class="secondary-button" onclick="removeProductBackground('${encodeURIComponent(String(id))}', '${encodeURIComponent(String(image || ''))}')">Quitar fondo</button>
-    <button class="secondary-button product-delete-button" onclick="deleteOmniaProduct('${encodeURIComponent(String(id))}')">Eliminar</button>
+    <button class="secondary-button" onclick="event.stopPropagation();editOmniaProduct('${encodeURIComponent(String(id))}')">Editar ficha</button>
+    <button class="secondary-button" onclick="event.stopPropagation();removeProductBackground('${encodeURIComponent(String(id))}', '${encodeURIComponent(String(image || ''))}')">Quitar fondo</button>
+    <button class="secondary-button product-delete-button" onclick="event.stopPropagation();deleteOmniaProduct('${encodeURIComponent(String(id))}')">Eliminar</button>
 </div>
                 </div>
             `;
@@ -1323,6 +1326,123 @@ async function deleteOmniaProduct(encodedId) {
         await loadAdminProducts();
         if (typeof loadDashboardStats === "function") await loadDashboardStats();
     } catch (error) { setProductManagementMessage(`No se pudo eliminar: ${error.message}`, true); }
+}
+
+// Editor visual por producto. Las imágenes ocultas y añadidas aquí solo afectan a esta ventana;
+// nunca se envía una operación de borrado de imagen a Printify ni al catálogo de OMNIA.
+function productEditorStoreKey(id) { return `omnia_product_editor_images_v1:${id}`; }
+function readProductEditorImages(id, product) {
+    let stored = { hidden: [], added: [] };
+    try { stored = JSON.parse(localStorage.getItem(productEditorStoreKey(id)) || '{"hidden":[],"added":[]}'); } catch (_) {}
+    const originals = [];
+    const add = (value, index) => {
+        const url = typeof value === 'string' ? value : value && (value.src || value.url || value.preview_url || value.preview);
+        if (url && !originals.some(item => item.url === url)) originals.push({ key: `source:${url}`, url, source: true, label: `Imagen ${index + 1}` });
+    };
+    if (Array.isArray(product.images)) product.images.forEach(add);
+    if (product.payload) {
+        let payload = product.payload;
+        if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (_) { payload = {}; } }
+        if (Array.isArray(payload.images)) payload.images.forEach(add);
+    }
+    add(product.main_image_url || product.image_url || product.imageUrl || product.image, originals.length);
+    const hidden = new Set(stored.hidden || []);
+    return [...originals.filter(item => !hidden.has(item.key)), ...(stored.added || []).map((item, i) => ({...item, key: item.key || `added:${i}`, source: false}))];
+}
+function saveProductEditorImageState(id, images, product) {
+    let stored = { hidden: [], added: [] };
+    try { stored = JSON.parse(localStorage.getItem(productEditorStoreKey(id)) || '{"hidden":[],"added":[]}'); } catch (_) {}
+    const sourceUrls = new Set();
+    const collect = value => { const u = typeof value === 'string' ? value : value && (value.src || value.url || value.preview_url || value.preview); if (u) sourceUrls.add(u); };
+    if (Array.isArray(product.images)) product.images.forEach(collect);
+    let payload = product.payload;
+    if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (_) { payload = {}; } }
+    if (Array.isArray(payload?.images)) payload.images.forEach(collect);
+    collect(product.main_image_url || product.image_url || product.imageUrl || product.image);
+    stored.added = images.filter(item => !item.source);
+    const visibleSourceKeys = new Set(images.filter(item => item.source).map(item => item.key));
+    stored.hidden = [...sourceUrls].map(url => `source:${url}`).filter(key => !visibleSourceKeys.has(key));
+    try { localStorage.setItem(productEditorStoreKey(id), JSON.stringify(stored)); }
+    catch (_) { throw new Error('El navegador no tiene espacio suficiente para guardar las imágenes añadidas en este dispositivo.'); }
+}
+function openProductEditor(encodedId) {
+    const id = decodeURIComponent(encodedId);
+    const product = window.__omniaProductsById && window.__omniaProductsById[id];
+    if (!product) { setProductManagementMessage('No se encontró el producto seleccionado. Actualiza el catálogo e inténtalo de nuevo.', true); return; }
+    let images = readProductEditorImages(id, product);
+    let active = 0;
+    const title = product.title || product.name || '';
+    const description = product.description || product.omnia_description || '';
+    const price = product.price ?? product.sale_price ?? product.salePrice ?? '';
+    const stock = product.stock ?? product.quantity ?? product.inventory ?? '';
+    const old = document.getElementById('omniaProductEditorModal'); if (old) old.remove();
+    const modal = document.createElement('div'); modal.id = 'omniaProductEditorModal'; modal.className = 'omnia-product-editor-backdrop';
+    modal.innerHTML = `<section class="omnia-product-editor" role="dialog" aria-modal="true" aria-labelledby="omniaEditorHeading">
+      <header class="omnia-editor-header"><div><span class="section-label">CATÁLOGO OMNIA</span><h2 id="omniaEditorHeading">Editar producto</h2><p>Las imágenes que ocultes aquí se conservarán en Printify y en OMNIA.</p></div><button type="button" class="omnia-editor-close" aria-label="Cerrar" data-close-editor>×</button></header>
+      <div class="omnia-editor-content"><section class="omnia-editor-gallery"><div class="omnia-editor-main-image" id="omniaEditorMainImage"></div><div class="omnia-editor-thumbnails" id="omniaEditorThumbnails"></div><label class="omnia-editor-add">＋ <span>Añadir imágenes desde tu dispositivo</span><input id="omniaEditorImageInput" type="file" accept="image/*" multiple hidden></label><p class="omnia-editor-note">Eliminar una imagen solo la oculta en esta ventana. El zoom abre una vista ampliada.</p></section>
+      <form id="omniaProductEditorForm" class="omnia-editor-fields"><label>Título<input id="omniaEditorTitle" maxlength="200" required value="${escapeHtml(title)}"></label><label>Descripción <span class="omnia-editor-counter" id="omniaEditorDescriptionCount">0/5000</span><textarea id="omniaEditorDescription" maxlength="5000" rows="7">${escapeHtml(description)}</textarea></label><div class="omnia-editor-two-fields"><label>Precio<input id="omniaEditorPrice" type="number" min="0" step="0.01" value="${escapeHtml(price)}"></label><label>Cantidad en stock<input id="omniaEditorStock" type="number" min="0" step="1" value="${escapeHtml(stock)}" placeholder="No especificado"></label></div><p class="omnia-editor-stock-note">El stock se guardará solo si la API admite la actualización para este producto.</p><p class="product-management-message" id="omniaEditorMessage" role="status" aria-live="polite"></p><footer class="omnia-editor-footer"><button type="button" class="secondary-button" data-close-editor>Cancelar</button><button type="submit" class="primary-button" id="omniaEditorSaveButton">Guardar cambios</button></footer></form></div></section>`;
+    document.body.appendChild(modal);
+    const $ = sel => modal.querySelector(sel);
+    const close = () => modal.remove();
+    modal.querySelectorAll('[data-close-editor]').forEach(btn => btn.addEventListener('click', close));
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    const desc = $('#omniaEditorDescription'); const count = $('#omniaEditorDescriptionCount');
+    const updateCount = () => count.textContent = `${desc.value.length}/5000`; desc.addEventListener('input', updateCount); updateCount();
+    function renderGallery() {
+      if (active >= images.length) active = Math.max(0, images.length - 1);
+      const main = $('#omniaEditorMainImage');
+      main.innerHTML = images.length ? `<img src="${escapeHtml(images[active].url)}" alt="Imagen ${active+1}"><span class="omnia-editor-image-count">${active+1} / ${images.length}</span><button type="button" class="omnia-editor-zoom" aria-label="Ampliar imagen">⌕</button><button type="button" class="omnia-editor-image-delete" aria-label="Ocultar imagen">×</button>${images.length > 1 ? `<button type="button" class="omnia-editor-prev" aria-label="Imagen anterior">‹</button><button type="button" class="omnia-editor-next" aria-label="Imagen siguiente">›</button>` : ''}` : '<div class="omnia-editor-no-image">No hay imágenes visibles. Pulsa + para añadir desde tu dispositivo.</div>';
+      if (images.length) {
+        main.querySelector('.omnia-editor-zoom').onclick = () => openProductImageZoom(images[active].url);
+        main.querySelector('.omnia-editor-image-delete').onclick = () => { if (!confirm('¿Ocultar esta imagen solamente en la ventana de edición? No se eliminará de Printify ni de OMNIA.')) return; images.splice(active,1); try { saveProductEditorImageState(id, images, product); renderGallery(); } catch (e) { $('#omniaEditorMessage').textContent = e.message; } };
+        const prev = main.querySelector('.omnia-editor-prev'); if (prev) prev.onclick = () => { active = (active - 1 + images.length) % images.length; renderGallery(); };
+        const next = main.querySelector('.omnia-editor-next'); if (next) next.onclick = () => { active = (active + 1) % images.length; renderGallery(); };
+      }
+      $('#omniaEditorThumbnails').innerHTML = images.map((img,i) => `<button type="button" class="omnia-editor-thumb ${i===active?'active':''}" data-image-index="${i}" aria-label="Seleccionar imagen ${i+1}"><img src="${escapeHtml(img.url)}" alt=""><span>${i+1}</span></button>`).join('');
+      $('#omniaEditorThumbnails').querySelectorAll('[data-image-index]').forEach(btn => btn.onclick = () => { active = Number(btn.dataset.imageIndex); renderGallery(); });
+    }
+    $('#omniaEditorImageInput').addEventListener('change', async e => {
+      const files = [...(e.target.files || [])];
+      for (const file of files) { if (!file.type.startsWith('image/')) continue; const dataUrl = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); images.push({key:`added:${Date.now()}:${Math.random().toString(36).slice(2)}`,url:dataUrl,source:false,label:file.name}); }
+      try { saveProductEditorImageState(id, images, product); renderGallery(); $('#omniaEditorMessage').textContent = files.length ? 'Imágenes añadidas a la galería de este dispositivo.' : ''; }
+      catch (err) { $('#omniaEditorMessage').textContent = err.message; }
+      e.target.value = '';
+    });
+    renderGallery();
+    $('#omniaProductEditorForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const newTitle = $('#omniaEditorTitle').value.trim(); const newDescription = desc.value;
+      const priceValue = $('#omniaEditorPrice').value; const stockValue = $('#omniaEditorStock').value;
+      if (!newTitle) { $('#omniaEditorMessage').textContent = 'El título es obligatorio.'; return; }
+      if (newDescription.length > 5000) { $('#omniaEditorMessage').textContent = 'La descripción no puede superar 5.000 caracteres.'; return; }
+      const btn = $('#omniaEditorSaveButton'); btn.disabled = true; btn.textContent = 'Guardando…'; $('#omniaEditorMessage').textContent = '';
+      try {
+        const payload = { title: newTitle, description: newDescription };
+        if (priceValue !== '') payload.price = Number(priceValue);
+        if (stockValue !== '') payload.stock = Number(stockValue);
+        const productSave = await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(id)}`, { method:'PUT', body:JSON.stringify(payload) });
+        await readApiResponse(productSave);
+        // También guarda la presentación de OMNIA cuando esa ruta está disponible.
+        const settingsResponse = await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(id)}/omnia-settings`, { method:'PUT', body:JSON.stringify({settings:{title:newTitle,description:newDescription}}) });
+        if (!settingsResponse.ok && settingsResponse.status !== 404 && settingsResponse.status !== 405) await readApiResponse(settingsResponse);
+        saveProductEditorImageState(id, images, product);
+        $('#omniaEditorMessage').textContent = 'Cambios guardados.';
+        await loadAdminProducts();
+        setTimeout(() => { if (document.body.contains(modal)) close(); }, 650);
+      } catch (err) { $('#omniaEditorMessage').textContent = `No se pudieron guardar todos los cambios: ${err.message}`; }
+      finally { if (document.body.contains(btn)) { btn.disabled = false; btn.textContent = 'Guardar cambios'; } }
+    });
+}
+function openProductImageZoom(url) {
+    const layer = document.createElement('div'); layer.className = 'omnia-image-zoom-backdrop';
+    layer.innerHTML = `<button type="button" class="omnia-image-zoom-close" aria-label="Cerrar zoom">×</button><img src="${escapeHtml(url)}" alt="Vista ampliada"><div class="omnia-image-zoom-controls"><button type="button" data-zoom-out>−</button><button type="button" data-zoom-reset>100%</button><button type="button" data-zoom-in>＋</button></div>`;
+    document.body.appendChild(layer); const img = layer.querySelector('img'); let scale = 1;
+    const apply = () => { img.style.transform = `scale(${scale})`; layer.querySelector('[data-zoom-reset]').textContent = `${Math.round(scale*100)}%`; };
+    layer.querySelector('.omnia-image-zoom-close').onclick = () => layer.remove(); layer.addEventListener('click', e => { if (e.target === layer) layer.remove(); });
+    layer.querySelector('[data-zoom-in]').onclick = () => { scale = Math.min(4, scale + .25); apply(); };
+    layer.querySelector('[data-zoom-out]').onclick = () => { scale = Math.max(.5, scale - .25); apply(); };
+    layer.querySelector('[data-zoom-reset]').onclick = () => { scale = 1; apply(); };
+    img.addEventListener('wheel', e => { e.preventDefault(); scale = Math.max(.5, Math.min(4, scale + (e.deltaY < 0 ? .15 : -.15))); apply(); }, {passive:false});
 }
 
 function escapeHtml(value) {
