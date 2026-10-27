@@ -622,6 +622,9 @@ if (!image && product.payload) {
     >
         Elegir maqueta
     </button>
+    <button class="secondary-button" onclick="editOmniaProduct('${encodeURIComponent(String(id))}')">Editar ficha</button>
+    <button class="secondary-button" onclick="removeProductBackground('${encodeURIComponent(String(id))}', '${encodeURIComponent(String(image || ''))}')">Quitar fondo</button>
+    <button class="secondary-button product-delete-button" onclick="deleteOmniaProduct('${encodeURIComponent(String(id))}')">Eliminar</button>
 </div>
                 </div>
             `;
@@ -1215,6 +1218,113 @@ function renderRecentProducts(products) {
         .join("");
 }
 
+function setProductManagementMessage(message, isError = false) {
+    const el = document.getElementById("productManagementMessage");
+    if (el) {
+        el.textContent = message;
+        el.classList.toggle("is-error", Boolean(isError));
+    }
+}
+
+async function readApiResponse(response) {
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok || data.status === "error") {
+        throw new Error(data.message || data.detail || `Error HTTP ${response.status}`);
+    }
+    return data;
+}
+
+async function createManualProduct() {
+    const title = window.prompt("Nombre del producto:");
+    if (title === null) return;
+    if (!title.trim()) { setProductManagementMessage("El nombre es obligatorio.", true); return; }
+    const priceText = window.prompt("Precio de venta (USD):", "0.00");
+    if (priceText === null) return;
+    const price = Number(priceText);
+    if (!Number.isFinite(price) || price < 0) { setProductManagementMessage("Introduce un precio válido.", true); return; }
+    const description = window.prompt("Descripción del producto (opcional):", "") || "";
+    const category = window.prompt("Categoría (opcional):", "") || "";
+    const image = window.prompt("URL de imagen (opcional):", "") || "";
+    try {
+        setProductManagementMessage("Creando producto…");
+        await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/manual`, {
+            method: "POST", body: JSON.stringify({ title: title.trim(), price, description, category, image })
+        }));
+        setProductManagementMessage("Producto creado como borrador.");
+        await loadAdminProducts();
+        if (typeof loadDashboardStats === "function") await loadDashboardStats();
+    } catch (error) { setProductManagementMessage(`No se pudo crear el producto: ${error.message}`, true); }
+}
+
+async function syncAllPrintifyProducts() {
+    if (!window.confirm("¿Sincronizar los productos de la tienda Printify configurada con el catálogo de OMNIA?")) return;
+    try {
+        setProductManagementMessage("Sincronizando productos de Printify. Puede tardar un poco…");
+        const data = await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/sync/printify-all`, { method: "POST" }));
+        const count = data.products_synced ?? data.total ?? data.synced ?? null;
+        setProductManagementMessage(count === null ? (data.message || "Sincronización finalizada.") : `Sincronización finalizada: ${count} productos procesados.`);
+        await loadAdminProducts();
+        if (typeof loadDashboardStats === "function") await loadDashboardStats();
+    } catch (error) { setProductManagementMessage(`Falló la sincronización: ${error.message}`, true); }
+}
+
+async function setupPrintifyWebhook() {
+    if (!window.confirm("¿Solicitar a OMNIA API la configuración del webhook de Printify?")) return;
+    try {
+        setProductManagementMessage("Configurando webhook de Printify…");
+        const data = await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/webhooks/printify/setup`, { method: "POST", body: JSON.stringify({}) }));
+        setProductManagementMessage(data.message || "Solicitud de configuración del webhook completada.");
+    } catch (error) { setProductManagementMessage(`No se pudo configurar el webhook: ${error.message}`, true); }
+}
+
+async function editOmniaProduct(encodedId) {
+    const id = decodeURIComponent(encodedId);
+    try {
+        const current = await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(id)}/omnia-settings`));
+        const settings = current.settings || {};
+        const title = window.prompt("Título para mostrar en OMNIA:", settings.title || "");
+        if (title === null) return;
+        const description = window.prompt("Descripción para OMNIA:", settings.description || "");
+        if (description === null) return;
+        const category = window.prompt("Categoría para OMNIA:", settings.category || "");
+        if (category === null) return;
+        setProductManagementMessage("Guardando ficha de OMNIA…");
+        const data = await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(id)}/omnia-settings`, {
+            method: "PUT", body: JSON.stringify({ settings: { ...settings, title: title.trim(), description, category } })
+        }));
+        setProductManagementMessage(data.message || "Ficha de OMNIA guardada.");
+        await loadAdminProducts();
+    } catch (error) { setProductManagementMessage(`No se pudo editar la ficha: ${error.message}`, true); }
+}
+
+async function removeProductBackground(encodedId, encodedImage) {
+    const id = decodeURIComponent(encodedId);
+    const imageUrl = decodeURIComponent(encodedImage || "");
+    if (!imageUrl) { setProductManagementMessage("Este producto no tiene una URL de imagen disponible.", true); return; }
+    if (!window.confirm("¿Procesar esta imagen para quitar el fondo? El servicio puede requerir credenciales configuradas en la API.")) return;
+    try {
+        setProductManagementMessage("Procesando imagen para quitar el fondo…");
+        const data = await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(id)}/remove-background`, {
+            method: "POST", body: JSON.stringify({ image_url: imageUrl })
+        }));
+        setProductManagementMessage(data.message || (data.processed_image_url ? `Imagen procesada: ${data.processed_image_url}` : "Procesamiento completado."));
+        await loadAdminProducts();
+    } catch (error) { setProductManagementMessage(`No se pudo quitar el fondo: ${error.message}`, true); }
+}
+
+async function deleteOmniaProduct(encodedId) {
+    const id = decodeURIComponent(encodedId);
+    if (!window.confirm("¿Eliminar este producto del catálogo de OMNIA? Esta acción no se puede deshacer. No elimina el producto original de Printify.")) return;
+    try {
+        setProductManagementMessage("Eliminando producto del catálogo…");
+        const data = await readApiResponse(await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(id)}`, { method: "DELETE" }));
+        setProductManagementMessage(data.message || "Producto eliminado del catálogo de OMNIA.");
+        await loadAdminProducts();
+        if (typeof loadDashboardStats === "function") await loadDashboardStats();
+    } catch (error) { setProductManagementMessage(`No se pudo eliminar: ${error.message}`, true); }
+}
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
@@ -1240,6 +1350,12 @@ window.openProductChannels = openProductChannels;
 window.closeProductChannels = closeProductChannels;
 window.saveProductChannels = saveProductChannels;
 window.loadAdminProducts = loadAdminProducts;
+window.createManualProduct = createManualProduct;
+window.syncAllPrintifyProducts = syncAllPrintifyProducts;
+window.setupPrintifyWebhook = setupPrintifyWebhook;
+window.editOmniaProduct = editOmniaProduct;
+window.removeProductBackground = removeProductBackground;
+window.deleteOmniaProduct = deleteOmniaProduct;
 window.showSection = showSection;
 
 loadInitialSection();
