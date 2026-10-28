@@ -1241,6 +1241,342 @@ const removeBackgroundMatch = path.match(
       });
     }
 
+// PayPal: crear pedidos con precios calculados en el servidor.
+    if (method === "POST" && path === "/api/payments/paypal/create-order") {
+      let localOrderId = null;
+      try {
+        if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+          return json({ status: "error", message: "PayPal no está configurado." }, 503);
+        }
+
+        const body = await parsePayload(await request.text());
+        if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) {
+          return json({ status: "error", message: "Artículos inválidos." }, 400);
+        }
+
+        const validated = [];
+        let totalCents = 0;
+
+        for (const item of body.items) {
+          const productId = String(item.printify_product_id || "");
+          const variantId = String(item.variant_id || "");
+          const quantity = Number(item.quantity);
+
+          if (!productId || !variantId || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+            return json({ status: "error", message: "Artículo o cantidad inválidos." }, 400);
+          }
+
+          const product = await getPublicProduct(productId);
+          if (!product) {
+            return json({ status: "error", message: "Un producto ya no está disponible." }, 400);
+          }
+
+          const normalized = normalizePublicProduct(product);
+          const variants = Array.isArray(normalized.variants) ? normalized.variants : [];
+          const variant = variants.find(v =>
+            v && String(v.id) === variantId &&
+            v.is_enabled !== false && v.is_available !== false
+          );
+
+          const priceCents = Number(variant && variant.price);
+          if (!variant || !Number.isSafeInteger(priceCents) || priceCents <= 0) {
+            return json({ status: "error", message: "Variante o precio inválido." }, 400);
+          }
+
+          const lineCents = priceCents * quantity;
+          if (!Number.isSafeInteger(lineCents) || !Number.isSafeInteger(totalCents + lineCents)) {
+            return json({ status: "error", message: "Importe fuera de rango." }, 400);
+          }
+
+          totalCents += lineCents;
+          validated.push({
+            productId,
+            variantId,
+            title: String(normalized.title || "Producto OMNIA").slice(0, 250),
+            quantity,
+            priceCents,
+            lineCents
+          });
+        }
+
+        if (totalCents <= 0) {
+          return json({ status: "error", message: "Importe inválido." }, 400);
+        }
+
+        localOrderId = crypto.randomUUID();
+        await env.DB.prepare(
+          `INSERT INTO orders
+           (id, status, currency, subtotal_cents, total_cents, payment_provider,
+            payment_status, fulfillment_status, created_at, updated_at)
+           VALUES (?, 'pending', 'USD', ?, ?, 'paypal', 'pending', 'pending',
+                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        ).bind(localOrderId, totalCents, totalCents).run();
+
+        for (const item of validated) {
+          await env.DB.prepare(
+            `INSERT INTO order_items
+             (order_id, product_id, printify_product_id, variant_id, product_title,
+              quantity, unit_price_cents, line_total_cents, fulfillment_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+          ).bind(
+            localOrderId, item.productId, item.productId, item.variantId,
+            item.title, item.quantity, item.priceCents, item.lineCents
+          ).run();
+        }
+
+        const credentials = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+        const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: "grant_type=client_credentials"
+        });
+
+        if (!tokenResponse.ok) throw new Error("PayPal OAuth failed");
+        const tokenData = await tokenResponse.json();
+
+        const paypalResponse = await fetch("https://api-m.paypal.com/v2/checkout/orders", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            "Content-Type": "application/json",
+            "PayPal-Request-Id": localOrderId
+          },
+          body: JSON.stringify({
+            intent: "CAPTURE",
+            purchase_units: [{
+              custom_id: localOrderId,
+              invoice_id: localOrderId,
+              amount: {
+                currency_code: "USD",
+                value: (totalCents / 100).toFixed(2)
+              }
+            }]
+          })
+        });
+
+        const paypalData = await paypalResponse.json();
+        if (!paypalResponse.ok || !paypalData.id) {
+          throw new Error("PayPal order creation failed");
+        }
+
+        const savePayPalOrder = await env.DB.prepare(
+          `UPDATE orders SET paypal_order_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        ).bind(paypalData.id, localOrderId).run();
+
+        if (savePayPalOrder.meta?.changes !== 1) {
+          throw new Error("Could not persist PayPal order ID");
+        }
+
+        return json({
+          status: "success",
+          orderID: paypalData.id,
+          localOrderId
+        });
+      } catch (error) {
+        console.error("PayPal create-order error:", error.message);
+        if (localOrderId) {
+          try {
+            await env.DB.prepare(
+              `UPDATE orders
+               SET status = 'payment_failed', payment_status = 'failed',
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ? AND payment_status = 'pending'`
+            ).bind(localOrderId).run();
+          } catch (cleanupError) {
+            console.error("PayPal order cleanup error:", cleanupError.message);
+          }
+        }
+        return json({
+          status: "error",
+          message: "No se pudo crear el pedido. Comprueba la configuración y vuelve a intentarlo."
+        }, 502);
+      }
+    }
+
+    // PayPal: capturar y verificar el importe antes de marcar el pedido como pagado.
+    if (method === "POST" && path === "/api/payments/paypal/capture-order") {
+      try {
+        if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+          return json({ status: "error", message: "PayPal no está configurado." }, 503);
+        }
+
+        const body = await parsePayload(await request.text());
+        const localOrderId = String(body.localOrderId || "");
+        const paypalOrderId = String(body.orderID || "");
+
+        if (!localOrderId || !paypalOrderId) {
+          return json({ status: "error", message: "Faltan los datos del pedido." }, 400);
+        }
+
+        const order = await env.DB.prepare(
+          `SELECT id, paypal_order_id, status, payment_status, total_cents
+           FROM orders WHERE id = ? LIMIT 1`
+        ).bind(localOrderId).first();
+
+        if (!order || order.paypal_order_id !== paypalOrderId) {
+          return json({ status: "error", message: "Pedido no válido." }, 400);
+        }
+
+        if (order.payment_status === "captured" && order.status === "paid") {
+          return json({ status: "success", paid: true, localOrderId, alreadyCaptured: true });
+        }
+
+        const credentials = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+        const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: "grant_type=client_credentials"
+        });
+
+        if (!tokenResponse.ok) throw new Error("PayPal OAuth failed");
+        const tokenData = await tokenResponse.json();
+
+        const captureResponse = await fetch(
+          `https://api-m.paypal.com/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}/capture`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${tokenData.access_token}`,
+              "Content-Type": "application/json",
+              "PayPal-Request-Id": `capture-${localOrderId}`
+            },
+            body: "{}"
+          }
+        );
+
+        let captureData = await captureResponse.json();
+
+        // Si la captura respondió con error o la respuesta fue ambigua,
+        // consultar PayPal antes de declarar que el pago falló.
+        if (!captureResponse.ok || captureData.status !== "COMPLETED") {
+          const verifyResponse = await fetch(
+            `https://api-m.paypal.com/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${tokenData.access_token}`,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+
+          if (verifyResponse.ok) {
+            const verifiedOrder = await verifyResponse.json();
+            if (verifiedOrder.status === "COMPLETED") {
+              captureData = verifiedOrder;
+            } else {
+              return json({
+                status: "error",
+                message: "PayPal aún no confirma el pago. Verifica el estado antes de reintentar."
+              }, 409);
+            }
+          } else {
+            return json({
+              status: "error",
+              message: "No se pudo verificar el estado del pago. Comprueba PayPal antes de reintentar."
+            }, 502);
+          }
+        }
+
+        const purchaseUnit = (captureData.purchase_units || []).find(
+          unit => unit.custom_id === localOrderId || unit.invoice_id === localOrderId
+        );
+        const capture = purchaseUnit &&
+          purchaseUnit.payments &&
+          (purchaseUnit.payments.captures || []).find(c => c.status === "COMPLETED");
+
+        if (
+          !purchaseUnit || !capture || !capture.amount ||
+          capture.amount.currency_code !== "USD" ||
+          Math.round(Number(capture.amount.value) * 100) !== Number(order.total_cents)
+        ) {
+          return json({
+            status: "error",
+            message: "No se pudo verificar el importe capturado. El pedido requiere revisión."
+          }, 409);
+        }
+
+        const captureId = String(capture.id || paypalOrderId);
+        const payerName = [
+          captureData.payer && captureData.payer.name && captureData.payer.name.given_name,
+          captureData.payer && captureData.payer.name && captureData.payer.name.surname
+        ].filter(Boolean).join(" ").slice(0, 250);
+        const payerEmail = String(
+          captureData.payer && captureData.payer.email_address || ""
+        ).slice(0, 250);
+
+        const markPaidResult = await env.DB.prepare(
+          `UPDATE orders
+           SET status = 'paid', payment_status = 'captured',
+               payer_name = ?, payer_email = ?, paid_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND paypal_order_id = ?
+             AND payment_status != 'captured'`
+        ).bind(payerName, payerEmail, localOrderId, paypalOrderId).run();
+
+        if (markPaidResult.meta?.changes !== 1) {
+          const latestOrder = await env.DB.prepare(
+            `SELECT status, payment_status, paypal_order_id
+             FROM orders WHERE id = ?`
+          ).bind(localOrderId).first();
+
+          if (
+            !latestOrder ||
+            latestOrder.paypal_order_id !== paypalOrderId ||
+            latestOrder.status !== "paid" ||
+            latestOrder.payment_status !== "captured"
+          ) {
+            return json({
+              status: "error",
+              message: "No se pudo verificar el registro del pago. Comprueba PayPal antes de reintentar."
+            }, 409);
+          }
+        }
+
+        const eventResult = await env.DB.prepare(
+          `INSERT OR IGNORE INTO payment_events
+           (order_id, provider, provider_event_id, event_type, payload_json)
+           VALUES (?, 'paypal', ?, 'PAYMENT.CAPTURE.COMPLETED', ?)`
+        ).bind(localOrderId, captureId, JSON.stringify({
+          paypal_order_id: paypalOrderId,
+          capture_id: captureId,
+          amount: capture.amount
+        })).run();
+
+        if (eventResult.meta?.changes !== 1) {
+          const existingEvent = await env.DB.prepare(
+            `SELECT order_id FROM payment_events
+             WHERE provider = 'paypal' AND provider_event_id = ?
+             LIMIT 1`
+          ).bind(captureId).first();
+
+          if (!existingEvent || existingEvent.order_id !== localOrderId) {
+            console.error("PayPal capture event was not recorded:", localOrderId);
+            return json({
+              status: "error",
+              paid: true,
+              message: "El pago fue confirmado, pero su registro requiere revisión. No vuelvas a pagar."
+            }, 500);
+          }
+        }
+
+        return json({ status: "success", paid: true, localOrderId });
+      } catch (error) {
+        console.error("PayPal capture error:", error.message);
+        return json({
+          status: "error",
+          message: "No se pudo confirmar el pago. Verifica el estado en PayPal antes de reintentar."
+        }, 502);
+      }
+    }
+
+
     return json({ status: "error", message: "Ruta no encontrada." }, 404);
   },
 };
