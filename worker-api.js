@@ -1258,7 +1258,8 @@ const removeBackgroundMatch = path.match(
         let totalCents = 0;
 
         for (const item of body.items) {
-          const productId = String(item.printify_product_id || "");
+          // Identificador común; printify_product_id se mantiene por compatibilidad.
+          const productId = String(item.product_id || item.printify_product_id || "");
           const variantId = String(item.variant_id || "");
           const quantity = Number(item.quantity);
 
