@@ -261,19 +261,126 @@ try {
 }
 
 function getPrintifyEnglishEntry(product) {
-    return null;
+    if (!product || !String(product.key || "").startsWith("printify_")) return null;
+    const translations = omniaPrintifyCache[product.key];
+    const entry = translations && translations[currentLang];
+    if (!entry) return null;
+    if (
+        entry.sourceTitle !== String(product.titleCustom || "Producto OMNIA") ||
+        entry.sourceDescription !== String(product.descCustom || "")
+    ) return null;
+    return entry;
 }
 
 function getProductDisplayName(product, fallback) {
-    return fallback;
+    const entry = currentLang === "es" ? null : getPrintifyEnglishEntry(product);
+    return entry && entry.title ? entry.title : fallback;
 }
 
 function getProductDisplayDescription(product, fallback) {
-    return fallback;
+    const entry = currentLang === "es" ? null : getPrintifyEnglishEntry(product);
+    return entry && typeof entry.description === "string" ? entry.description : fallback;
+}
+
+async function translatePrintifyText(text, targetLang) {
+    const value = String(text || "").trim();
+    if (!value) return "";
+
+    const chunks = value.match(/[\s\S]{1,400}/g) || [];
+    const translated = [];
+
+    for (const part of chunks) {
+        const query = new URLSearchParams({
+            q: part,
+            langpair: "es|" + targetLang
+        });
+        const response = await fetch(
+            "https://api.mymemory.translated.net/get?" + query.toString()
+        );
+        if (!response.ok) throw new Error("Servicio de traducción no disponible.");
+
+        const data = await response.json();
+        const result = data && data.responseData
+            ? String(data.responseData.translatedText || "").trim()
+            : "";
+
+        if (
+            Number(data && data.responseStatus) !== 200 ||
+            !result ||
+            (data && data.responseDetails)
+        ) {
+            throw new Error("La traducción no devolvió un resultado válido.");
+        }
+        translated.push(result);
+    }
+    return translated.join("");
 }
 
 function ensurePrintifyEnglishTranslation(product) {
-    return Promise.resolve();
+    const targetLang = currentLang;
+    if (
+        targetLang === "es" ||
+        !product ||
+        !String(product.key || "").startsWith("printify_")
+    ) return Promise.resolve();
+
+    if (getPrintifyEnglishEntry(product)) return Promise.resolve();
+    const pendingKey = product.key + ":" + targetLang;
+    if (omniaPrintifyPending[pendingKey]) return omniaPrintifyPending[pendingKey];
+
+    const sourceTitle = String(product.titleCustom || "Producto OMNIA");
+    const sourceDescription = String(product.descCustom || "");
+    const task = omniaPrintifyQueue.then(async () => {
+        try {
+            const existing = omniaPrintifyCache[product.key] || {};
+            const cached = existing[targetLang];
+            if (
+                cached &&
+                cached.sourceTitle === sourceTitle &&
+                cached.sourceDescription === sourceDescription
+            ) return;
+
+            const translatedTitle = await translatePrintifyText(sourceTitle, targetLang);
+            const translatedDescription = sourceDescription
+                ? await translatePrintifyText(sourceDescription, targetLang)
+                : "";
+
+            if (!translatedTitle) throw new Error("El título traducido está vacío.");
+
+            omniaPrintifyCache[product.key] = {
+                ...existing,
+                [targetLang]: {
+                    sourceTitle,
+                    sourceDescription,
+                    title: translatedTitle,
+                    description: translatedDescription
+                }
+            };
+            localStorage.setItem(
+                OMNIA_PRINTIFY_TRANSLATIONS_KEY,
+                JSON.stringify(omniaPrintifyCache)
+            );
+
+            if (currentLang === targetLang) {
+                renderProducts(products);
+                updateCartUI();
+                refreshOpenProductTranslation();
+            }
+        } catch (error) {
+            console.warn(
+                "OMNIA: traducción de producto no disponible; se conserva el texto original.",
+                product.key,
+                targetLang,
+                error
+            );
+        }
+    });
+
+    omniaPrintifyQueue = task.then(() => {}, () => {});
+    omniaPrintifyPending[pendingKey] = task.finally(() => {
+        delete omniaPrintifyPending[pendingKey];
+    });
+    return omniaPrintifyPending[pendingKey];
 }
 
 function refreshOpenProductTranslation() {
