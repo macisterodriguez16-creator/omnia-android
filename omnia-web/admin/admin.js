@@ -1123,14 +1123,22 @@ function renderProductMockup(productId, data) {
     });
 
     modal.querySelectorAll(".product-mockup-option").forEach(button => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", event => {
+            event.preventDefault();
+
             modal.querySelectorAll(".product-mockup-option").forEach(option => {
                 const isSelected = option === button;
                 option.classList.toggle("is-selected", isSelected);
-                option.setAttribute("aria-pressed", String(isSelected));
-                option.querySelector(".product-mockup-option-label").textContent =
-                    isSelected ? "✓ Imagen principal" : "Elegir como principal";
+                option.setAttribute("aria-pressed", isSelected ? "true" : "false");
+                const label = option.querySelector(".product-mockup-option-label");
+                if (label) {
+                    label.textContent = isSelected
+                        ? "✓ Imagen principal"
+                        : "Elegir como principal";
+                }
             });
+
+            button.dataset.mockupSelected = "true";
 
             const message = modal.querySelector(".product-mockup-message");
             if (message) message.textContent = "";

@@ -1,7 +1,7 @@
 const siteConfig = {
     contactEmail: "soporte@omnia.com",
     contactPhone: "+1 (800) 555-OMNIA",
-    paypalClientId: "sb"
+    paypalClientId: "BAA23viCHm9-YBHyMX3VHqyzyGljmiYD1JSxiOhR6z0sKcaD3-yg4B8f-Su3jX5iZg6N8crkx41FwzIKgM"
 };
 
 const products = [];
@@ -1392,65 +1392,120 @@ function addModalToCart() {
 
 /* PASARELA PAYPAL EXPRESS */
 function initPayPalButtons() {
-    if (typeof paypal === 'undefined') return;
+    if (typeof paypal === "undefined") return;
 
-    const modalContainer = document.getElementById('paypalModalButtonContainer');
+    const modalContainer = document.getElementById("paypalModalButtonContainer");
     if (modalContainer && selectedProduct) {
-        modalContainer.innerHTML = '';
+        modalContainer.innerHTML = "";
+        let productLocalOrderId = null;
+
         paypal.Buttons({
-            style: { layout: 'horizontal', color: 'gold', shape: 'pill', label: 'pay' },
-            createOrder: (data, actions) => {
-                const qty = parseInt(document.getElementById('productQty').value) || 1;
-                const unitPrice = selectedProduct.printifyVariants?.length && selectedPrintifyVariant
-                    ? Number(selectedPrintifyVariant.priceUSD)
-                    : Number(selectedProduct.priceUSD);
-                if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-                    throw new Error("El precio de la variante seleccionada no es válido.");
+            style: { layout: "horizontal", color: "gold", shape: "pill", label: "pay" },
+            createOrder: async () => {
+                const qty = Math.max(1, Math.min(20,
+                    parseInt(document.getElementById("productQty")?.value, 10) || 1
+                ));
+                const productId = String(selectedProduct.printifyId || "");
+                const variantId = String(selectedPrintifyVariant?.id || "");
+
+                if (!productId || !variantId) {
+                    throw new Error("Selecciona un producto y una variante válida de Printify.");
                 }
-                const convertedAmount = (unitPrice * qty * rates[currentCurrency]).toFixed(2);
-                return actions.order.create({
-                    purchase_units: [{
-                        description: selectedProduct.key,
-                        amount: { currency_code: currentCurrency, value: convertedAmount }
-                    }]
-                });
+
+                const order = await createOmniaPayPalOrder([{
+                    printify_product_id: productId,
+                    variant_id: variantId,
+                    quantity: qty
+                }]);
+                productLocalOrderId = order.localOrderId;
+                return order.orderID;
             },
-            onApprove: (data, actions) => {
-                return actions.order.capture().then(details => {
-                    alert(`¡Pago completado con éxito por ${details.payer.name.given_name}! Código de orden: ${details.id}`);
+            onApprove: async data => {
+                try {
+                    if (!productLocalOrderId) throw new Error("No se encontró el pedido local.");
+                    await captureOmniaPayPalOrder(data.orderID, productLocalOrderId);
+                    alert("¡Pago confirmado por PayPal y OMNIA!");
                     closeProductModal();
-                });
+                } catch (error) {
+                    console.error("OMNIA PayPal product:", error);
+                    alert(error.message || "No se pudo confirmar el pago. Verifica su estado antes de reintentar.");
+                }
+            },
+            onError: error => {
+                console.error("OMNIA PayPal product:", error);
+                alert(error.message || "No se pudo iniciar el pago.");
             }
-        }).render('#paypalModalButtonContainer');
+        }).render("#paypalModalButtonContainer");
     }
 
-    const otherPaymentContainer = document.getElementById('paypalOtherPaymentContainer');
+    const otherPaymentContainer = document.getElementById("paypalOtherPaymentContainer");
     if (otherPaymentContainer) {
-        otherPaymentContainer.innerHTML = '';
+        otherPaymentContainer.innerHTML = "";
         if (cart.length > 0) {
+            let otherLocalOrderId = null;
+
             paypal.Buttons({
-                style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'checkout' },
-                createOrder: (data, actions) => {
-                    const totalUSD = cart.reduce((sum, p) => sum + p.priceUSD, 0);
-                    const convertedAmount = (totalUSD * rates[currentCurrency]).toFixed(2);
-                    return actions.order.create({
-                        purchase_units: [{
-                            description: "Orden de compra OMNIA Marketplace",
-                            amount: { currency_code: currentCurrency, value: convertedAmount }
-                        }]
-                    });
+                style: { layout: "vertical", color: "black", shape: "rect", label: "checkout" },
+                createOrder: async () => {
+                    const items = cart.map(item => ({
+                        printify_product_id: String(item.printifyId || ""),
+                        variant_id: String(item.selectedVariant?.id || ""),
+                        quantity: 1
+                    }));
+
+                    if (items.some(item => !item.printify_product_id || !item.variant_id)) {
+                        throw new Error("El carrito contiene un artículo sin variante válida de Printify.");
+                    }
+
+                    const order = await createOmniaPayPalOrder(items);
+                    otherLocalOrderId = order.localOrderId;
+                    return order.orderID;
                 },
-                onApprove: (data, actions) => {
-                    return actions.order.capture().then(details => {
-                        alert(`¡Gracias por tu compra, ${details.payer.name.given_name}! Orden confirmada ID: ${details.id}`);
+                onApprove: async data => {
+                    try {
+                        if (!otherLocalOrderId) throw new Error("No se encontró el pedido local.");
+                        await captureOmniaPayPalOrder(data.orderID, otherLocalOrderId);
                         cart = [];
                         updateCartUI();
                         closeOtherPaymentsModal();
-                    });
+                        alert("¡Pago confirmado por PayPal y OMNIA!");
+                    } catch (error) {
+                        console.error("OMNIA PayPal other payment:", error);
+                        alert(error.message || "No se pudo confirmar el pago. Verifica su estado antes de reintentar.");
+                    }
+                },
+                onError: error => {
+                    console.error("OMNIA PayPal other payment:", error);
+                    alert(error.message || "No se pudo iniciar el pago.");
                 }
-            }).render('#paypalOtherPaymentContainer');
+            }).render("#paypalOtherPaymentContainer");
         }
     }
+}
+async function createOmniaPayPalOrder(items) {
+    const response = await fetch(`${OMNIA_API_BACKEND}/api/payments/paypal/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items })
+    });
+    const result = await response.json();
+    if (!response.ok || result.status !== "success" || !result.orderID || !result.localOrderId) {
+        throw new Error(result.message || "No se pudo crear el pedido.");
+    }
+    return result;
+}
+
+async function captureOmniaPayPalOrder(orderID, localOrderId) {
+    const response = await fetch(`${OMNIA_API_BACKEND}/api/payments/paypal/capture-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderID, localOrderId })
+    });
+    const result = await response.json();
+    if (!response.ok || result.status !== "success" || result.paid !== true) {
+        throw new Error(result.message || "El servidor no ha confirmado el pago.");
+    }
+    return result;
 }
 
 function initCartPayPalButton() {
@@ -1460,6 +1515,8 @@ function initCartPayPalButton() {
     container.innerHTML = "";
     if (!cart.length) return;
 
+    let localOrderId = null;
+
     paypal.Buttons({
         style: {
             layout: "vertical",
@@ -1467,47 +1524,47 @@ function initCartPayPalButton() {
             shape: "rect",
             label: "checkout"
         },
-        createOrder: (data, actions) => {
-            const totalUSD = cart.reduce(
-                (sum, item) => sum + (Number(item.priceUSD) || 0), 0
-            );
+        createOrder: async () => {
+            const items = cart.map(item => ({
+                printify_product_id: String(item.printifyId || ""),
+                variant_id: String(item.selectedVariant?.id || ""),
+                quantity: 1
+            }));
 
-            if (!Number.isFinite(totalUSD) || totalUSD <= 0) {
-                throw new Error("El total del carrito no es válido.");
+            if (items.some(item => !item.printify_product_id || !item.variant_id)) {
+                throw new Error("El carrito contiene un artículo sin producto o variante de Printify válida.");
             }
 
-            return actions.order.create({
-                purchase_units: [{
-                    description: "Compra en OMNIA Marketplace",
-                    amount: {
-                        currency_code: "USD",
-                        value: totalUSD.toFixed(2)
-                    }
-                }]
-            });
+            const order = await createOmniaPayPalOrder(items);
+            localOrderId = order.localOrderId;
+            return order.orderID;
         },
-        onApprove: (data, actions) => {
-            return actions.order.capture().then(details => {
+        onApprove: async data => {
+            try {
+                if (!localOrderId) {
+                    throw new Error("No se encontró el pedido local. No vuelvas a pagar; verifica su estado.");
+                }
+
+                await captureOmniaPayPalOrder(data.orderID, localOrderId);
+
                 cart = [];
                 updateCartUI();
 
                 const modal = document.getElementById("cartModal");
                 if (modal) modal.style.display = "none";
 
-                const payer = details.payer?.name?.given_name || "cliente";
-                alert(
-                    `¡Gracias por tu compra, ${payer}! ` +
-                    `Orden: ${details.id}`
-                );
-            });
+                alert("¡Pago confirmado por PayPal y OMNIA! Tu pedido quedó registrado.");
+            } catch (error) {
+                console.error("OMNIA PayPal capture:", error);
+                alert(error.message || "No pudimos confirmar el pago. Comprueba su estado en PayPal antes de reintentar.");
+            }
         },
         onError: error => {
             console.error("OMNIA PayPal:", error);
-            alert("No se pudo completar el pago con PayPal. Inténtalo de nuevo.");
+            alert(error.message || "No se pudo completar el pago. Si PayPal mostró una confirmación, verifica el pedido antes de volver a pagar.");
         }
     }).render("#paypalCartButtonContainer");
 }
-
 function openOtherPaymentsModal() {
     document.getElementById('otherPaymentsModal').style.display = 'flex';
     initPayPalButtons();
