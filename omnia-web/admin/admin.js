@@ -1,5 +1,4 @@
 const OMNIA_API_BACKEND = "https://omnia-api.macisterodriguez16.workers.dev";
-const OMNIA_ADMIN_BACKEND = "/admin-api";
 
 const navItems = document.querySelectorAll(".nav-item");
 const sections = document.querySelectorAll(".admin-section");
@@ -27,6 +26,8 @@ const channels = [
     { id: "bonanza", name: "Bonanza" }
 ];
 
+let adminSecret = "";
+
 function getAdminHeaders(includeJson = false) {
     const headers = {};
 
@@ -34,12 +35,46 @@ function getAdminHeaders(includeJson = false) {
         headers["Content-Type"] = "application/json";
     }
 
+    if (adminSecret) {
+        headers["Authorization"] = `Bearer ${adminSecret}`;
+        headers["X-Admin-Secret"] = adminSecret;
+    }
+
     return headers;
 }
 
+function requestAdminSecret() {
+    if (adminSecret) {
+        return true;
+    }
+
+    const secret = window.prompt(
+        "OMNIA CONTROL CENTER\n\nIntroduce tu ADMIN_SECRET para continuar:"
+    );
+
+    if (!secret || !secret.trim()) {
+        return false;
+    }
+
+    adminSecret = secret.trim();
+    sessionStorage.setItem("omnia_admin_secret", adminSecret);
+
+    return true;
+}
+
+function clearAdminSecret() {
+    adminSecret = "";
+    sessionStorage.removeItem("omnia_admin_secret");
+}
+
 async function adminFetch(url, options = {}) {
+    if (!requestAdminSecret()) {
+        throw new Error("Autenticación de administrador cancelada.");
+    }
+
     const headers = {
-        ...(options.headers || {})
+        ...(options.headers || {}),
+        ...getAdminHeaders(false)
     };
 
     if (options.body && !headers["Content-Type"]) {
@@ -48,18 +83,21 @@ async function adminFetch(url, options = {}) {
 
     const response = await fetch(url, {
         ...options,
-        credentials: "same-origin",
         headers
     });
 
-    if (response.status === 401) {
-        throw new Error(
-            "Sesión no válida o API no autorizada. Comprueba el acceso administrativo."
-        );
-    }
+    if (response.status === 401 || response.status === 403) {
+        clearAdminSecret();
 
-    if (response.status === 403) {
-        throw new Error("Acceso administrativo denegado.");
+        const retry = window.confirm(
+            `La petición ${url} devolvió HTTP ${response.status}.\n\n¿Quieres introducir nuevamente el ADMIN_SECRET?`
+        );
+
+        if (retry) {
+            return adminFetch(url, options);
+        }
+
+        throw new Error("No autorizado.");
     }
 
     return response;
@@ -212,7 +250,7 @@ async function loadAdminProducts() {
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products`
+            `${OMNIA_API_BACKEND}/api/admin/products`
         );
 
         if (!response.ok) {
@@ -326,6 +364,7 @@ async function loadTopProductChannels() {
     const selector = document.getElementById("topPublicationProductSelect");
     const panel = document.getElementById("topProductPublicationPanel");
     if (!selector || !panel || !selector.value) return;
+    if (!requestAdminSecret()) return;
 
     const productId = selector.value;
     const message = document.getElementById("topPublicationMessage");
@@ -333,7 +372,7 @@ async function loadTopProductChannels() {
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -372,6 +411,7 @@ async function saveTopProductChannels() {
         if (message) message.textContent = "Selecciona un producto primero.";
         return;
     }
+    if (!requestAdminSecret()) return;
 
     const productId = selector.value;
     const checkboxes = Array.from(
@@ -384,7 +424,7 @@ async function saveTopProductChannels() {
         for (const input of checkboxes) {
             const channel = input.dataset.channel;
             const baseUrl =
-                `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`;
+                `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`;
 
             if (input.checked) {
                 const response = await adminFetch(baseUrl, {
@@ -616,10 +656,11 @@ async function withdrawProductFromOmnia(encodedProductId) {
         return;
     }
 
+    if (!requestAdminSecret()) return;
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels/omnia`,
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels/omnia`,
             {
                 method: "DELETE",
                 headers: getAdminHeaders(false)
@@ -658,10 +699,11 @@ async function deleteProductFromOmnia(encodedProductId) {
         return;
     }
 
+    if (!requestAdminSecret()) return;
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}`,
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}`,
             {
                 method: "DELETE",
                 headers: getAdminHeaders(false)
@@ -694,6 +736,9 @@ async function deleteProductFromOmnia(encodedProductId) {
 async function openProductChannels(encodedProductId) {
     const productId = decodeURIComponent(encodedProductId);
 
+    if (!requestAdminSecret()) {
+        return;
+    }
 
     // Sincronizar el producto seleccionado en el panel superior.
     const topSelector = document.getElementById("topPublicationProductSelect");
@@ -711,7 +756,7 @@ async function openProductChannels(encodedProductId) {
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`
         );
 
         if (!response.ok) {
@@ -882,6 +927,9 @@ function renderProductChannels(productId, savedChannels) {
 async function saveProductChannels(encodedProductId) {
     const productId = decodeURIComponent(encodedProductId);
 
+    if (!requestAdminSecret()) {
+        return;
+    }
 
     const checkboxes = document.querySelectorAll(
         ".product-channel-checkbox"
@@ -910,7 +958,7 @@ async function saveProductChannels(encodedProductId) {
 
             if (checkbox.checked) {
                 const response = await adminFetch(
-                    `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`,
+                    `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels`,
                     {
                         method: "POST",
                         headers: getAdminHeaders(true),
@@ -929,7 +977,7 @@ async function saveProductChannels(encodedProductId) {
                 }
             } else {
                 const response = await adminFetch(
-                    `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels/${encodeURIComponent(channel)}`,
+                    `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/channels/${encodeURIComponent(channel)}`,
                     {
                         method: "DELETE",
                         headers: getAdminHeaders(false)
@@ -985,10 +1033,11 @@ function closeProductChannels() {
 async function openProductMockup(encodedProductId) {
     const productId = decodeURIComponent(encodedProductId);
 
+    if (!requestAdminSecret()) return;
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/mockup`
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/mockup`
         );
 
         const data = await response.json().catch(() => ({}));
@@ -1111,7 +1160,7 @@ function renderProductMockup(productId, data) {
 
         try {
             const response = await adminFetch(
-                `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/mockup`,
+                `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/mockup`,
                 {
                     method: "PUT",
                     body: JSON.stringify({
@@ -1275,7 +1324,7 @@ async function openProductEditor(encodedProductId) {
 
     let overlay;
     try {
-        const response = await adminFetch(`${OMNIA_ADMIN_BACKEND}/api/admin/products`, {
+        const response = await adminFetch(`${OMNIA_API_BACKEND}/api/admin/products`, {
             headers: getAdminHeaders(false)
         });
         if (!response.ok) throw new Error("No se pudo cargar el catálogo.");
@@ -1287,7 +1336,7 @@ async function openProductEditor(encodedProductId) {
         if (!product) throw new Error("Producto no encontrado en el catálogo.");
 
         const settingsResponse = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/omnia-settings`,
+            `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/omnia-settings`,
             { headers: getAdminHeaders(false) }
         );
         if (!settingsResponse.ok) throw new Error("No se pudieron cargar los ajustes de OMNIA.");
@@ -1415,7 +1464,7 @@ async function openProductEditor(encodedProductId) {
             saveButton.textContent = "Guardando…";
             try {
                 const response = await adminFetch(
-                    `${OMNIA_ADMIN_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/omnia-settings`,
+                    `${OMNIA_API_BACKEND}/api/admin/products/${encodeURIComponent(productId)}/omnia-settings`,
                     {
                         method: "PUT",
                         headers: getAdminHeaders(true),
@@ -1451,7 +1500,7 @@ async function syncAllPrintifyProducts() {
 
     try {
         const response = await adminFetch(
-            `${OMNIA_ADMIN_BACKEND}/api/sync/printify-all`,
+            `${OMNIA_API_BACKEND}/api/sync/printify-all`,
             { method: "POST" }
         );
         const result = await response.json().catch(() => ({}));
