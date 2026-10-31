@@ -1821,24 +1821,27 @@ function getProductAudienceCategory(product) {
             ? product.etiquetas
             : [];
 
-    const text = [
+    const normalize = value => String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const titleText = normalize([
         product.titleCustom || "",
         product.title || "",
-        product.name || "",
+        product.name || ""
+    ].join(" "));
+
+    const text = normalize([
+        titleText,
         product.description || "",
         product.descCustom || "",
         product.key || "",
         product.audienceCategory || "",
         ...tags
-    ].join(" ").toLowerCase()
-     .normalize("NFD")
-     .replace(/[\u0300-\u036f]/g, "");
+    ].join(" "));
 
-    const category = String(product.category || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
+    const category = normalize(product.category || "");
     const all = category + " " + text;
 
     const footwear =
@@ -1847,29 +1850,45 @@ function getProductAudienceCategory(product) {
     const kids =
         /\b(kids?|children|toddler|youth|infant|baby|ninos?|ninas?|infantil|bebe|bebes)\b/.test(text);
 
-    const women =
-        /\b(womens?|ladies|female|mujer|mujeres|femenina|femenino)\b/.test(text);
+    const womenPattern =
+        /\b(?:women|woman|womens|women['’]s|womens|ladies|female|mujer|mujeres|femenina|femenino)\b/;
 
-    const men =
-        /\b(mens?|male|hombre|hombres|masculina|masculino)\b/.test(text);
+    const menPattern =
+        /\b(?:men|mens|men['’]s|male|hombre|hombres|masculina|masculino)\b/;
 
-    if (footwear) {
-        if (kids) return "";
-        if (women) return "Calzado de mujer";
-        if (men) return "Calzado de hombre";
-        return "";
-    }
+    const titleWomen = womenPattern.test(titleText);
+    const titleMen = menPattern.test(titleText);
+
+    const women = womenPattern.test(text);
+    const men = menPattern.test(text);
 
     const clothing =
         /\b(ropa|moda|apparel|shirt|hoodie|jacket|pullover|sweatshirt|dress|top|tee|pants|shorts|leggings|swimwear|skirt|blouse|camiseta|sudadera|chaqueta|pantalon|pantalones|vestido|falda|blusa)\b/.test(all);
 
+    if (footwear) {
+        if (kids) return "";
+        if (titleWomen !== titleMen) {
+            return titleWomen ? "Calzado de mujer" : "Calzado de hombre";
+        }
+        if (women !== men) {
+            return women ? "Calzado de mujer" : "Calzado de hombre";
+        }
+        return "";
+    }
+
     if (!clothing) return "";
     if (kids) return "Ropa de niños";
-    if (women) return "Ropa de mujer";
-    if (men) return "Ropa de hombre";
+
+    if (titleWomen !== titleMen) {
+        return titleWomen ? "Ropa de mujer" : "Ropa de hombre";
+    }
+
+    if (women !== men) {
+        return women ? "Ropa de mujer" : "Ropa de hombre";
+    }
+
     return "";
 }
-
 function filterCategory(cat) {
     const category = String(cat || "").toLowerCase();
 
