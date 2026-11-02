@@ -1703,7 +1703,7 @@ const removeBackgroundMatch = path.match(
           }, 502);
         }
 
-        console.log("Printify shipping quote response keys:", Object.keys(result));
+        console.log("Printify shipping quote FULL RESPONSE:", JSON.stringify(result));
 
         return json({
           status: "success",
