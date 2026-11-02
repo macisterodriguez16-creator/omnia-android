@@ -1683,19 +1683,34 @@ const removeBackgroundMatch = path.match(
         const result = await response.json().catch(() => null);
 
         if (!response.ok || !result || typeof result !== "object") {
-          console.error("Printify shipping quote failed:", response.status);
+          const printifyMessage = result && typeof result === "object"
+            ? [result.message, result.error_description, result.error]
+                .find(value => typeof value === "string" && value.trim())
+            : null;
+
+          console.error("Printify shipping quote failed:", {
+            status: response.status,
+            message: printifyMessage || "Sin mensaje de error disponible"
+          });
+
           return json({
             status: "error",
-            message: "Printify no pudo calcular el envío para este destino o producto."
+            message: "Printify no pudo calcular el envío.",
+            printify_status: response.status,
+            details: printifyMessage
+              ? printifyMessage.slice(0, 300)
+              : "Printify no proporcionó detalles adicionales."
           }, 502);
         }
+
+        console.log("Printify shipping quote response keys:", Object.keys(result));
 
         return json({
           status: "success",
           currency: "USD",
           shipping: result
         });
-      } catch (error) {
+    } catch (error) {
         console.error("Shipping quote error:", error.message);
         return json({
           status: "error",
