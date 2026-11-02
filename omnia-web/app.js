@@ -413,6 +413,7 @@ function refreshOpenProductTranslation() {
 }
 
 function renderProducts(items) {
+    updateOmniaCategoryImages();
     const grid = document.getElementById('productGrid');
     const langData = i18n[currentLang] || i18n['es'];
     
@@ -1445,6 +1446,90 @@ function decrementQty() {
     if (val > 1) qtyInput.value = val - 1;
 }
 
+function buyNowCheckout() {
+    if (!selectedProduct) {
+        alert("Selecciona un producto antes de continuar.");
+        return;
+    }
+
+    const variants = Array.isArray(selectedProduct.printifyVariants)
+        ? selectedProduct.printifyVariants
+        : [];
+
+    if (variants.length && (
+        !selectedPrintifyVariant ||
+        !variants.some(v => String(v.id) === String(selectedPrintifyVariant.id))
+    )) {
+        alert("Selecciona una combinación disponible antes de continuar.");
+        return;
+    }
+
+    const variant = selectedPrintifyVariant;
+    const unitPriceUSD = variants.length
+        ? (
+            Number.isFinite(Number(variant.priceUSD)) &&
+            Number(variant.priceUSD) > 0
+                ? Number(variant.priceUSD)
+                : Number(variant.price) / 100
+        )
+        : Number(selectedProduct.priceUSD);
+
+    if (!Number.isFinite(unitPriceUSD) || unitPriceUSD <= 0) {
+        alert("El precio del producto o variante no está disponible.");
+        return;
+    }
+
+    const quantity = Math.max(
+        1,
+        Math.min(100, parseInt(
+            document.getElementById("productQty")?.value,
+            10
+        ) || 1)
+    );
+
+    const rate = Number(rates[currentCurrency]);
+    const unitPrice = unitPriceUSD * (
+        Number.isFinite(rate) && rate > 0 ? rate : 1
+    );
+
+    const langData = i18n[currentLang] || i18n["es"];
+    const prodLang = langData[selectedProduct.key] ||
+        (i18n["es"] && i18n["es"][selectedProduct.key]) || {};
+
+    const name = getProductDisplayName(
+        selectedProduct,
+        selectedProduct.titleCustom || prodLang.name || selectedProduct.key
+    );
+
+    const images = variant
+        ? getPrintifyImagesForVariant(selectedProduct, variant)
+        : [];
+
+    const checkoutItem = {
+        productId: selectedProduct.printifyId || selectedProduct.id,
+        name,
+        variantId: variant ? variant.id : null,
+        variant: variant
+            ? (variant.title || "Variante seleccionada")
+            : "Producto estándar",
+        quantity,
+        unitPrice,
+        currency: currentCurrency || "USD",
+        image: images[0] || selectedProduct.image || ""
+    };
+
+    try {
+        sessionStorage.setItem(
+            "omniaDirectCheckout",
+            JSON.stringify(checkoutItem)
+        );
+        window.location.href = "/checkout.html";
+    } catch (error) {
+        console.error("No se pudo preparar el checkout:", error);
+        alert("No se pudo preparar la compra. Inténtalo nuevamente.");
+    }
+}
+
 function addModalToCart() {
     if (!selectedProduct) return;
 
@@ -1889,6 +1974,29 @@ function getProductAudienceCategory(product) {
 
     return "";
 }
+
+function updateOmniaCategoryImages() {
+    const cards = [
+        { selector: ".category-men", matches: p => getProductAudienceCategory(p) === "Ropa de hombre" },
+        { selector: ".category-women", matches: p => getProductAudienceCategory(p) === "Ropa de mujer" },
+        { selector: ".category-accessories", matches: p => getPrintifyCategory(p) === "Accesorios" },
+        { selector: ".category-shoes", matches: p => {
+            const a = getProductAudienceCategory(p);
+            return a === "Calzado de hombre" || a === "Calzado de mujer" ||
+                   getPrintifyCategory(p) === "Calzado";
+        }}
+    ];
+    cards.forEach(({selector, matches}) => {
+        const img = document.querySelector(`${selector} .category-image`);
+        if (!img) return;
+        const p = products.find(x => matches(x) &&
+            (x.image || (Array.isArray(x.images) && x.images.length)));
+        const src = p && (p.image || (Array.isArray(p.images) ? p.images[0] : ""));
+        if (src) img.src = src;
+        else img.removeAttribute("src");
+    });
+}
+
 function filterCategory(cat) {
     const category = String(cat || "").toLowerCase();
 
@@ -1901,6 +2009,15 @@ function filterCategory(cat) {
 
     if (category === "todo" || category === "todos") {
         renderProducts(products);
+        return;
+    }
+
+    if (category === "calzado") {
+        renderProducts(products.filter(product => {
+            const audience = getProductAudienceCategory(product).toLowerCase();
+            return audience === "calzado de hombre" ||
+                   audience === "calzado de mujer";
+        }));
         return;
     }
 
@@ -2132,7 +2249,7 @@ function initHeroAnimation() {
     resize();
     window.addEventListener('resize', resize);
 
-    const colors = ['#c5a059', '#7928ca', '#00f2fe'];
+    const colors = ['#ffffff', '#c0c0c0', '#e8e8e8'];
     const lights = Array.from({ length: 25 }, () => ({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,

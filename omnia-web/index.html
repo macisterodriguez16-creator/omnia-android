@@ -52,11 +52,17 @@
             <button class="menu-toggle" aria-label="Abrir menú">☰</button>
 
             <a href="#hero" class="brand-logo">
-                <span class="brand-mark">∞</span>
-                <span class="brand-name">OMNIA</span>
+                <img src="assets/brand/omnia-logo-transparente.png" alt="OMNIA — Fashion Art and Style" class="brand-image">
             </a>
 
-            <div class="search-box">
+            <nav class="primary-nav" aria-label="Navegación principal">
+      <a href="#hero">Inicio</a>
+      <a href="#catalog" onclick="document.getElementById('catalog').hidden=false; filterCategory('Ropa de hombre')">Hombre</a>
+      <a href="#catalog" onclick="document.getElementById('catalog').hidden=false; filterCategory('Ropa de mujer')">Mujer</a>
+      <a href="#catalog" onclick="document.getElementById('catalog').hidden=false; filterCategory('Accesorios')">Accesorios</a>
+      <a href="#" onclick="event.preventDefault(); openContactModal()">Contacto</a>
+    </nav>
+    <div class="search-box">
                 <span class="search-icon">⌕</span>
                 <input type="text" id="searchInput" placeholder="Buscar moda, arte, accesorios..." onkeyup="filterProducts()">
             </div>
@@ -108,25 +114,46 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <section class="hero" id="hero">
-        <canvas id="heroCanvas"></canvas>
+    <canvas id="heroCanvas"></canvas>
 
-        <div class="hero-content">
+    <div class="hero-content">
+        <div class="hero-copy">
             <span class="hero-subtitle">ARTE · MODA · ESTILO · VIDA</span>
-            <h1>Todo lo que te inspira,<br>en un solo lugar.</h1>
+
+            <div class="hero-title-frame">
+                <span class="hero-title-line"></span>
+                <h1>Todo lo que te inspira,<br>en un solo lugar.</h1>
+                <span class="hero-title-line"></span>
+            </div>
+
             <p>Una nueva experiencia global donde el arte, la moda y el diseño se encuentran.</p>
 
             <div class="hero-actions">
-                <a href="#catalog" class="hero-btn">Explorar colección</a>
-                <a href="#catalog" class="hero-secondary-btn">Descubrir OMNIA</a>
+                <a href="#catalog" class="hero-btn" onclick="document.getElementById('catalog').hidden=false; filterCategory('Todo')">Comprar ahora</a>
             </div>
         </div>
 
-        <div class="hero-signature">
-            <span>OMNIA</span>
-        </div>
+        <div class="hero-artwork" aria-hidden="true">
+            <div class="hero-art-glow"></div>
+            <div class="hero-art-ring hero-art-ring-one"></div>
+            <div class="hero-art-ring hero-art-ring-two"></div>
 
-        
-    </section>
+            <img
+                class="hero-art-svg"
+                src="assets/brand/omnia-logo-transparente.png"
+                alt="OMNIA — Fashion Art and Style"
+            />
+
+            <div class="hero-art-caption">
+                <span>ART · FASHION · STYLE</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="hero-signature">
+        <span>OMNIA</span>
+    </div>
+</section>
 
     <section class="brand-intro">
         <div class="brand-intro-line"></div>
@@ -140,7 +167,62 @@
         </p>
     </section>
 
-    <main class="container" id="catalog">
+
+    <section class="omnia-categories" id="omnia-categories">
+        <div class="omnia-categories-heading">
+            <span class="section-eyebrow">EXPLORE OMNIA</span>
+            <h2>Descubre tu estilo</h2>
+            <p>Encuentra aquello que expresa quién eres.</p>
+        </div>
+
+        <div class="omnia-category-grid">
+            <a class="omnia-category-card category-men" href="#catalog"
+               onclick="document.getElementById('catalog').hidden=false; filterCategory('Ropa de hombre')">
+                <span class="category-number">01</span>
+                <img class="category-image" alt="" aria-hidden="true">
+                <span class="category-card-copy">
+                    <small>COLECCIÓN</small>
+                    <strong>Hombre</strong>
+                    <span>Explorar colección ↗</span>
+                </span>
+            </a>
+
+            <a class="omnia-category-card category-women" href="#catalog"
+               onclick="document.getElementById('catalog').hidden=false; filterCategory('Ropa de mujer')">
+                <span class="category-number">02</span>
+                <img class="category-image" alt="" aria-hidden="true">
+                <span class="category-card-copy">
+                    <small>COLECCIÓN</small>
+                    <strong>Mujer</strong>
+                    <span>Explorar colección ↗</span>
+                </span>
+            </a>
+
+            <a class="omnia-category-card category-accessories" href="#catalog"
+               onclick="document.getElementById('catalog').hidden=false; filterCategory('Accesorios')">
+                <span class="category-number">03</span>
+                <img class="category-image" alt="" aria-hidden="true">
+                <span class="category-card-copy">
+                    <small>DETALLES QUE DEFINEN</small>
+                    <strong>Accesorios</strong>
+                    <span>Explorar colección ↗</span>
+                </span>
+            </a>
+
+            <a class="omnia-category-card category-shoes" href="#catalog"
+               onclick="document.getElementById('catalog').hidden=false; filterCategory('Calzado'); document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
+                <span class="category-number">04</span>
+                <img class="category-image" alt="" aria-hidden="true">
+                <span class="category-card-copy">
+                    <small>CAMINA CON ESTILO</small>
+                    <strong>Calzado</strong>
+                    <span>Explorar colección ↗</span>
+                </span>
+            </a>
+        </div>
+    </section>
+
+    <main class="container" id="catalog" hidden>
 
         <div class="catalog-heading">
             <div>
@@ -190,6 +272,25 @@
                 <input type="email" placeholder="Tu correo electrónico" required>
                 <button type="submit">Solicitar acceso</button>
             </form>
+        </div>
+    </section>
+
+    <section class="omnia-benefits" aria-label="Beneficios OMNIA">
+        <div class="omnia-benefit">
+            <span class="benefit-icon" aria-hidden="true">✧</span>
+            <div><h3>ENVÍOS INTERNACIONALES</h3><p>Descubre nuestras colecciones</p></div>
+        </div>
+        <div class="omnia-benefit">
+            <span class="benefit-icon" aria-hidden="true">◇</span>
+            <div><h3>COMPRA SEGURA</h3><p>Una experiencia protegida</p></div>
+        </div>
+        <div class="omnia-benefit">
+            <span class="benefit-icon" aria-hidden="true">◈</span>
+            <div><h3>PAGO CON PAYPAL</h3><p>Pago mediante nuestra pasarela</p></div>
+        </div>
+        <div class="omnia-benefit">
+            <span class="benefit-icon" aria-hidden="true">◎</span>
+            <div><h3>SOPORTE GLOBAL</h3><p>Estamos aquí para ayudarte</p></div>
         </div>
     </section>
 
@@ -320,23 +421,11 @@
                         Añadir al carrito
                     </button>
 
-                    <div class="express-checkout-box">
-                        <p class="express-title">Checkout seguro</p>
-                        <div class="secure-payment-note">
-                            <span>🔒</span>
-                            <div>
-                                <strong>Pago protegido</strong>
-                                <small>Tu información financiera se procesa mediante proveedores de pago seguros.</small>
-                            </div>
-                        </div>
-                        <div id="paypalModalButtonContainer"></div>
-                    </div>
+                    <button type="button" class="add-btn-large" id="buyNowCheckoutBtn" onclick="buyNowCheckout()">
+                        COMPRAR AHORA
+                    </button>
 
-                    <div class="other-payments-link">
-                        <a href="javascript:void(0)" onclick="openOtherPaymentsModal()">
-                            💳 Ver métodos de pago
-                        </a>
-                    </div>
+
                 </div>
             </div>
         </div>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080808">
+  <title>Checkout | OMNIA</title>
+  <link rel="icon" href="assets/brand/omnia-logo-transparente.png">
+  <link rel="stylesheet" href="checkout.css">
+</head>
+<body>
+  <main class="checkout-layout">
+
+    <section class="checkout-main">
+      <header class="checkout-header">
+        <a href="/" class="logo-link">
+          <img src="assets/brand/omnia-logo-transparente.png" alt="OMNIA">
+        </a>
+        <p class="secure-label">CHECKOUT SEGURO</p>
+      </header>
+
+      <nav class="checkout-breadcrumb">
+        <a href="/">Tienda</a><span> / </span><strong>Finalizar compra</strong>
+      </nav>
+
+      <form id="checkout-form">
+        <section class="form-section">
+          <h1>Finalizar compra</h1>
+          <h2>Información de contacto</h2>
+          <label for="email">Correo electrónico</label>
+          <input id="email" name="email" type="email" autocomplete="email"
+                 placeholder="tu@email.com" required>
+        </section>
+
+        <section class="form-section">
+          <h2>Dirección de envío</h2>
+
+          <div class="field-grid">
+            <div>
+              <label for="firstName">Nombre</label>
+              <input id="firstName" name="firstName" autocomplete="given-name" required>
+            </div>
+            <div>
+              <label for="lastName">Apellido</label>
+              <input id="lastName" name="lastName" autocomplete="family-name" required>
+            </div>
+          </div>
+
+          <label for="address">Dirección</label>
+          <input id="address" name="address" autocomplete="street-address"
+                 placeholder="Calle, avenida y número" required>
+
+          <label for="address2">Apartamento, suite o referencia <span>(opcional)</span></label>
+          <input id="address2" name="address2" placeholder="Apartamento, piso, etc.">
+
+          <div class="field-grid">
+            <div>
+              <label for="country">País</label>
+              <select id="country" name="country" autocomplete="country-name" required>
+                <option value="">Seleccionar país</option>
+                <option value="PA">Panamá</option>
+                <option value="US">Estados Unidos</option>
+                <option value="CA">Canadá</option>
+                <option value="MX">México</option>
+                <option value="CO">Colombia</option>
+                <option value="CR">Costa Rica</option>
+                <option value="ES">España</option>
+                <option value="OTHER">Otro país</option>
+              </select>
+            </div>
+            <div>
+              <label for="city">Ciudad</label>
+              <input id="city" name="city" autocomplete="address-level2" required>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div>
+              <label for="state">Provincia / Estado</label>
+              <input id="state" name="state" autocomplete="address-level1">
+            </div>
+            <div>
+              <label for="postalCode">Código postal</label>
+              <input id="postalCode" name="postalCode" autocomplete="postal-code">
+            </div>
+          </div>
+
+          <label for="phone">Teléfono</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel"
+                 placeholder="+507 0000-0000" required>
+        </section>
+
+        <section class="form-section">
+          <h2>Método de pago</h2>
+          <p class="section-description">Selecciona cómo deseas completar tu compra.</p>
+
+          <label class="payment-option">
+            <input type="radio" name="paymentMethod" value="tilopay" required>
+            <span class="payment-copy">
+              <strong>Tarjeta de crédito o débito</strong>
+              <small>Pago seguro mediante Tilopay</small>
+            </span>
+            <span class="payment-mark">CARD</span>
+          </label>
+
+          <label class="payment-option">
+            <input type="radio" name="paymentMethod" value="paypal">
+            <span class="payment-copy">
+              <strong>PayPal</strong>
+              <small>Paga con tu cuenta PayPal</small>
+            </span>
+            <span class="payment-mark paypal-mark">PayPal</span>
+          </label>
+        </section>
+
+        <button class="pay-button" type="submit" id="btn-pagar">
+          CONTINUAR CON EL PAGO
+          <span>→</span>
+        </button>
+
+        <p class="secure-note">Tus datos se utilizarán únicamente para gestionar tu pedido.</p>
+      </form>
+
+      <footer class="checkout-footer">
+        <a href="/">Volver a OMNIA</a>
+        <span>© OMNIA — Fashion Art and Style</span>
+      </footer>
+    </section>
+
+    <aside class="checkout-sidebar">
+      <div class="summary-box">
+        <div class="summary-heading">
+          <h2>Resumen del pedido</h2>
+          <span class="summary-count" id="summary-count">1</span>
+        </div>
+
+        <div class="product-summary">
+          <div class="product-image-wrap">
+            <img id="summary-image" src="assets/brand/omnia-logo-transparente.png"
+                 alt="Producto seleccionado">
+            <span class="product-quantity" id="summary-quantity">1</span>
+          </div>
+          <div class="product-info">
+            <strong id="summary-name">Tu producto OMNIA</strong>
+            <span id="summary-variant">Selecciona un producto en la tienda</span>
+          </div>
+          <strong class="product-price" id="summary-price">—</strong>
+        </div>
+
+        <div class="summary-divider"></div>
+
+        <div class="summary-line">
+          <span>Subtotal</span>
+          <strong id="summary-subtotal">—</strong>
+        </div>
+        <div class="summary-line">
+          <span>Envío</span>
+          <strong id="costo-envio-ui">Por calcular</strong>
+        </div>
+
+        <div class="summary-divider"></div>
+
+        <div class="summary-total">
+          <span>Total</span>
+          <strong id="total-final-ui">Por calcular</strong>
+        </div>
+
+        <p class="summary-disclaimer">
+          El costo de envío se calculará según el destino y los datos del producto.
+        </p>
+
+        <div class="trust-label">
+          <span>◆</span> EXPERIENCIA DE COMPRA OMNIA
+        </div>
+      </div>
+    </aside>
+
+  </main>
+  <script src="checkout.js"></script>
+</body>
+</html>

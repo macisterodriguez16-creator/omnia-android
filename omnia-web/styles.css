@@ -5,13 +5,13 @@
     --bg-panel: #101012;
     --bg-card: #141417;
     --bg-elevated: #1b1b1f;
-    --gold: #c9a45c;
-    --gold-light: #e4c982;
-    --gold-soft: rgba(201, 164, 92, 0.16);
+    --gold: #92713D;
+    --gold-light: #C5A15A;
+    --gold-soft: rgba(146, 113, 61, .14);
     --white: #f4f1ea;
     --muted: #96939a;
     --border: rgba(255, 255, 255, 0.08);
-    --gold-border: rgba(201, 164, 92, 0.35);
+    --gold-border: rgba(146, 113, 61, .32);
     --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }
 
@@ -125,7 +125,7 @@ a {
     border-radius: 50%;
     display: grid;
     place-items: center;
-    color: var(--gold-light);
+    color: #C5A15A;
     font-family: serif;
     font-size: 29px;
     line-height: 1;
@@ -196,7 +196,7 @@ a {
     margin-left: 8px;
     padding: 0 5px;
     border-radius: 50%;
-    background: var(--gold);
+    background: linear-gradient(135deg, #C5A15A, #92713D);
     color: #090909;
     font-size: 11px;
     font-weight: 700;
@@ -304,8 +304,8 @@ a {
     overflow: hidden;
     border-bottom: 1px solid var(--border);
     background:
-        radial-gradient(circle at 75% 45%, rgba(201, 164, 92, 0.13), transparent 28%),
-        radial-gradient(circle at 90% 20%, rgba(255, 255, 255, 0.04), transparent 25%),
+        radial-gradient(circle at 75% 45%, rgba(220, 225, 235, 0.16), transparent 32%),
+        radial-gradient(circle at 90% 20%, rgba(255, 255, 255, 0.09), transparent 30%),
         linear-gradient(120deg, #080809 0%, #101013 55%, #080809 100%);
 }
 
@@ -368,7 +368,7 @@ a {
 }
 
 .hero-btn:hover {
-    background: var(--gold-light);
+    background: #ffffff;
     transform: translateY(-2px);
 }
 
@@ -1558,32 +1558,31 @@ a {
     }
 }
 
-/* OMNIA — NUEVO ACABADO PREMIUM */
+/* OMNIA — ACABADO PREMIUM NEGRO Y PLATA */
 :root {
-    --gold: #d4af62;
-    --gold-light: #f1d995;
-    --gold-soft: rgba(212, 175, 98, .12);
-    --gold-border: rgba(212, 175, 98, .32);
+    --silver: #92713D;
+    --silver-light: #C5A15A;
+    --silver-soft: rgba(146, 113, 61, .14);
+    --silver-border: rgba(146, 113, 61, .32);
     --bg-main: #080808;
     --bg-panel: #101010;
     --bg-card: #141414;
-    --bg-elevated: #1c1a16;
-    --white: #f7f3eb;
+    --white: #f5f5f5;
 }
 
 body {
-    background: #080808;
+    background: var(--bg-main);
     color: var(--white);
 }
 
 .top-bar {
     background: #050505;
-    border-bottom-color: rgba(212, 175, 98, .2);
+    border-bottom: 1px solid rgba(146, 113, 61, .22);
 }
 
 .navbar {
-    background: rgba(8, 8, 8, .96);
-    border-bottom: 1px solid rgba(212, 175, 98, .24);
+    background: rgba(8, 8, 8, .97);
+    border-bottom: 1px solid var(--silver-border);
     backdrop-filter: blur(22px);
 }
 
@@ -1592,27 +1591,71 @@ body {
 }
 
 .brand-mark {
-    color: var(--gold-light);
-    text-shadow: 0 0 22px rgba(212, 175, 98, .22);
+    color: var(--silver-light);
+    text-shadow: 0 0 20px rgba(197, 161, 90, .22);
 }
 
 .brand-name {
-    color: var(--gold-light);
+    color: var(--silver-light);
     letter-spacing: .24em;
     font-family: 'Cinzel', serif;
 }
 
 .hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     min-height: min(720px, 82vh);
-    border-bottom: 1px solid var(--gold-border);
+    border-bottom: 1px solid var(--silver-border);
     background:
-        radial-gradient(ellipse at 78% 45%, rgba(212,175,98,.16), transparent 34%),
-        radial-gradient(ellipse at 12% 85%, rgba(212,175,98,.055), transparent 35%),
-        linear-gradient(115deg, #070707 0%, #12110f 52%, #080808 100%);
+        radial-gradient(ellipse at 78% 42%, rgba(210, 216, 224, .13), transparent 34%),
+        radial-gradient(ellipse at 12% 85%, rgba(210, 216, 224, .06), transparent 35%),
+        linear-gradient(115deg, #050505 0%, #17191c 52%, #080808 100%);
+}
+
+.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+        112deg,
+        transparent 35%,
+        rgba(197, 161, 90, .12) 49%,
+        transparent 56%
+    );
+    background-size: 220% 100%;
+    animation: omniaSilverLight 9s ease-in-out infinite;
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    right: 12%;
+    top: 18%;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(197,161,90,.16), transparent 68%);
+    filter: blur(12px);
+    animation: omniaSilverGlow 7s ease-in-out infinite alternate;
+}
+
+@keyframes omniaSilverLight {
+    0%, 100% { background-position: 100% 0; opacity: .35; }
+    50% { background-position: 0 0; opacity: .85; }
+}
+
+@keyframes omniaSilverGlow {
+    from { opacity: .35; transform: scale(.85); }
+    to { opacity: .8; transform: scale(1.15); }
 }
 
 #heroCanvas {
-    opacity: .38;
+    opacity: .48;
 }
 
 .hero-content {
@@ -1621,23 +1664,23 @@ body {
 }
 
 .hero-subtitle {
-    color: var(--gold-light);
+    color: var(--silver);
     letter-spacing: .32em;
     line-height: 1.9;
 }
 
 .hero-content h1 {
-    color: #f8f3e9;
+    color: #f8f8f8;
     font-family: 'Cinzel', serif;
     font-weight: 400;
     letter-spacing: -.025em;
     line-height: 1.12;
     text-wrap: balance;
-    text-shadow: 0 5px 35px rgba(0,0,0,.35);
+    text-shadow: 0 5px 35px rgba(0,0,0,.55);
 }
 
 .hero-content p {
-    color: #c0bbb1;
+    color: #c4c7cb;
     line-height: 1.95;
 }
 
@@ -1645,22 +1688,82 @@ body {
     min-height: 52px;
     padding: 0 30px;
     justify-content: center;
-    background: linear-gradient(135deg, #f0d995, #c5a052);
-    color: #11100c;
-    border: 1px solid #e6c979;
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    color: #101114;
+    border: 1px solid #e2e5e9;
     letter-spacing: .15em;
-    box-shadow: 0 8px 28px rgba(212,175,98,.12);
+    box-shadow: 0 8px 28px rgba(210,216,224,.12);
 }
 
 .hero-btn:hover {
-    background: #fff0bd;
+    background: #fff;
     color: #080808;
-    box-shadow: 0 12px 35px rgba(212,175,98,.2);
+    box-shadow: 0 12px 35px rgba(197,161,90,.22);
+}
+
+.hero-secondary-btn {
+    border-color: rgba(197,161,90,.55);
+    color: #f0f1f2;
+}
+
+.hero-secondary-btn:hover {
+    background: rgba(146,113,61,.12);
+    border-color: #fff;
+}
+
+.hero-signature {
+    color: rgba(235,238,242,.65);
+}
+
+.brand-intro {
+    border-bottom: 1px solid rgba(210,216,224,.12);
+}
+
+.section-eyebrow {
+    color: var(--silver);
+    letter-spacing: .22em;
+}
+
+.catalog-heading h2,
+.brand-intro h2,
+.editorial-copy h2 {
+    color: #f3f4f5;
+    font-family: 'Cinzel', serif;
+}
+
+.filter-bar {
+    gap: 10px;
+}
+
+.filter-bar .cat-btn {
+    border: 1px solid rgba(210,216,224,.22);
+    background: #111214;
+    color: #d5d8dc;
+    transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+
+.filter-bar .cat-btn:hover,
+.filter-bar .cat-btn.active {
+    background: linear-gradient(135deg, #e9ebee, #92713D);
+    border-color: #e5e7ea;
+    color: #101114;
 }
 
 .container {
     padding-top: 68px;
     padding-bottom: 80px;
+}
+
+.editorial-banner {
+    border-top: 1px solid var(--silver-border);
+    border-bottom: 1px solid var(--silver-border);
+    background:
+        radial-gradient(ellipse at 80% 50%, rgba(210,216,224,.09), transparent 42%),
+        linear-gradient(110deg, #090909, #17191c, #090909);
+}
+
+.footer {
+    border-top: 1px solid var(--silver-border);
 }
 
 button,
@@ -1670,12 +1773,12 @@ input[type="submit"] {
 }
 
 :focus-visible {
-    outline: 2px solid var(--gold-light);
+    outline: 2px solid var(--silver-light);
     outline-offset: 4px;
 }
 
 ::selection {
-    background: #d4af62;
+    background: #d9dde2;
     color: #080808;
 }
 
@@ -1697,6 +1800,70 @@ input[type="submit"] {
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .hero::before,
+    .hero::after {
+        animation: none;
+    }
+}
+
+/* OMNIA — TARJETAS PREMIUM */
+.card {
+    background: linear-gradient(155deg, #181a1d, #0d0e10);
+    border: 1px solid rgba(210, 216, 224, .18);
+    border-radius: 3px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .22);
+    transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(225, 230, 236, .55);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .42), 0 0 18px rgba(210, 216, 224, .07);
+}
+
+.card > img {
+    filter: saturate(.88) contrast(1.04);
+    transition: transform .55s ease, filter .4s ease;
+}
+
+.card:hover > img {
+    transform: scale(1.035);
+    filter: saturate(1) contrast(1.06);
+}
+
+.card-body {
+    padding: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,.015), transparent);
+}
+
+.card-cat {
+    color: #bfc5cc;
+    letter-spacing: .18em;
+}
+
+.card-title {
+    color: #f3f4f5;
+}
+
+.card-price {
+    color: #e2e5e9;
+    letter-spacing: .035em;
+}
+
+.add-btn,
+.add-btn-large {
+    border-color: rgba(210, 216, 224, .38);
+    color: #e6e8eb;
+    transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+
+.add-btn:hover,
+.add-btn-large:hover {
+    background: linear-gradient(135deg, #e9ebee, #92713D);
+    border-color: #e9ebee;
+    color: #101114;
+}
 
 /* OMNIA: quitar los cuadritos junto al carrito */
 .nav-icon-btn[aria-label="Favoritos"],
@@ -2074,4 +2241,2613 @@ input[type="submit"] {
 .filter-bar .cat-btn {
     max-width: 100%;
     white-space: normal;
+}
+
+
+
+/* OMNIA — BENEFICIOS, NEWSLETTER Y FOOTER */
+.omnia-benefits {
+    max-width: 1444px;
+    margin: 35px auto 0;
+    padding: 30px 28px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    border-top: 1px solid rgba(210,216,224,.22);
+    border-bottom: 1px solid rgba(210,216,224,.22);
+    background: linear-gradient(110deg, #090909, #17191c, #090909);
+}
+
+.omnia-benefit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 13px;
+}
+
+.benefit-icon {
+    color: #e1e4e8;
+    font-size: 27px;
+    text-shadow: 0 0 16px rgba(197,161,90,.22);
+}
+
+.omnia-benefit h3 {
+    margin: 0 0 5px;
+    color: #f0f1f3;
+    font-size: 10px;
+    letter-spacing: .13em;
+}
+
+.omnia-benefit p {
+    margin: 0;
+    color: #aeb3ba;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.newsletter-card {
+    border-color: rgba(210,216,224,.28);
+    background:
+        radial-gradient(circle at 85% 50%, rgba(210,216,224,.10), transparent 32%),
+        linear-gradient(115deg, #101114, #080808);
+}
+
+.vip-badge {
+    color: #d9dde2;
+}
+
+.newsletter-card h2 {
+    color: #f3f4f5;
+}
+
+.newsletter-form input {
+    border-color: rgba(210,216,224,.25);
+}
+
+.newsletter-form input:focus {
+    border-color: #d9dde2;
+}
+
+.newsletter-form button {
+    background: linear-gradient(135deg, #e9ebee, #92713D);
+    color: #101114;
+}
+
+.newsletter-form button:hover {
+    background: #fff;
+}
+
+.footer {
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(210,216,224,.07), transparent 48%),
+        #050506;
+}
+
+.footer-logo {
+    color: #f0f1f3;
+}
+
+.footer-col a {
+    transition: color .2s ease;
+}
+
+.footer-col a:hover {
+    color: #f0f1f3;
+}
+
+.footer-payment-row {
+    border-top: 1px solid rgba(210,216,224,.15);
+}
+
+.footer-bottom {
+    border-top-color: rgba(210,216,224,.18);
+}
+
+@media (max-width: 900px) {
+    .omnia-benefits {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 25px 18px;
+        gap: 24px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .omnia-benefits {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 25px 15px;
+    }
+
+    .omnia-benefit {
+        justify-content: flex-start;
+        max-width: 260px;
+        width: 100%;
+        margin: auto;
+    }
+}
+
+/* LOGO OFICIAL OMNIA */
+.brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.brand-image {
+    display: block;
+    width: 190px;
+    height: 54px;
+    object-fit: contain;
+    object-position: left center;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 145px;
+        height: 44px;
+    }
+}
+
+/* OMNIA — HERO PREMIUM RESPONSIVE */
+@media (max-width: 768px) {
+    .hero {
+        min-height: 540px;
+    }
+
+    .hero-content {
+        padding: 76px 7%;
+    }
+
+    .hero-content h1 {
+        font-size: clamp(36px, 8vw, 54px);
+        line-height: 1.12;
+    }
+
+    .hero-content p {
+        max-width: 520px;
+        font-size: 15px;
+    }
+
+    #heroCanvas {
+        opacity: .38;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero {
+        min-height: 510px;
+    }
+
+    .hero-content {
+        padding: 65px 22px;
+    }
+
+    .hero-content h1 {
+        font-size: clamp(32px, 9vw, 42px);
+    }
+
+    .hero-content p {
+        font-size: 14px;
+        line-height: 1.75;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .hero-actions a {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+
+/* OMNIA — CATEGORÍAS EDITORIALES NEGRO Y ORO */
+.omnia-categories {
+    max-width: 1444px;
+    margin: 0 auto;
+    padding: 76px 28px 35px;
+}
+
+.omnia-categories-heading {
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+.omnia-categories-heading h2 {
+    margin: 12px 0;
+    color: #f3f0e9;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(27px, 4vw, 39px);
+    font-weight: 500;
+}
+
+.omnia-categories-heading p {
+    color: #aaa49a;
+    font-size: 14px;
+    letter-spacing: .04em;
+}
+
+.omnia-category-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.omnia-category-card {
+    position: relative;
+    display: flex;
+    min-height: 285px;
+    overflow: hidden;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 22px;
+    color: #f3f0e9;
+    text-decoration: none;
+    isolation: isolate;
+    border: 1px solid rgba(197,161,90,.25);
+    background:
+        radial-gradient(ellipse at 75% 35%, rgba(197,161,90,.19), transparent 48%),
+        linear-gradient(145deg, #1b1812, #090909 72%);
+    transition: transform .35s ease, border-color .35s ease, box-shadow .35s ease;
+}
+
+.omnia-category-card::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    content: "";
+    opacity: .55;
+    background: linear-gradient(125deg, transparent 25%, rgba(197,161,90,.10), transparent 70%);
+    transform: translateX(-100%);
+    transition: transform .7s ease;
+}
+
+.omnia-category-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(197,161,90,.75);
+    box-shadow: 0 18px 42px rgba(0,0,0,.35), 0 0 24px rgba(146,113,61,.10);
+}
+
+.omnia-category-card:hover::before {
+    transform: translateX(100%);
+}
+
+.category-number {
+    color: #b9975b;
+    font-size: 11px;
+    letter-spacing: .2em;
+}
+
+.category-art {
+    position: absolute;
+    top: 42px;
+    right: 25px;
+    color: rgba(197,161,90,.23);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(90px, 11vw, 145px);
+    line-height: 1;
+    transition: transform .5s ease, color .5s ease;
+}
+
+.omnia-category-card:hover .category-art {
+    color: rgba(197,161,90,.42);
+    transform: scale(1.08) rotate(-8deg);
+}
+
+.category-card-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+}
+
+.category-card-copy small {
+    color: #b9975b;
+    font-size: 9px;
+    letter-spacing: .2em;
+}
+
+.category-card-copy strong {
+    color: #f4f0e7;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(21px, 2.2vw, 29px);
+    font-weight: 500;
+}
+
+.category-card-copy > span {
+    color: #bdb5a7;
+    font-size: 11px;
+    letter-spacing: .08em;
+    transition: color .25s ease;
+}
+
+.omnia-category-card:hover .category-card-copy > span {
+    color: #d6b875;
+}
+
+@media (max-width: 900px) {
+    .omnia-category-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .omnia-category-card {
+        min-height: 245px;
+    }
+}
+
+@media (max-width: 480px) {
+    .omnia-categories {
+        padding: 55px 18px 25px;
+    }
+    .omnia-category-grid {
+        gap: 10px;
+    }
+    .omnia-category-card {
+        min-height: 205px;
+        padding: 15px;
+    }
+    .category-art {
+        top: 38px;
+        right: 12px;
+        font-size: 85px;
+    }
+    .category-card-copy strong {
+        font-size: 20px;
+    }
+    .category-card-copy small {
+        font-size: 8px;
+        letter-spacing: .12em;
+    }
+}
+
+/* OMNIA — CATÁLOGO PREMIUM NEGRO Y ORO */
+#productGrid .card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(155deg, #18140e 0%, #0b0b0a 75%);
+    border: 1px solid rgba(197, 161, 90, .28);
+    border-radius: 3px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .32);
+    transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease;
+}
+
+#productGrid .card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(197, 161, 90, .8);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, .48), 0 0 22px rgba(146, 113, 61, .12);
+}
+
+#productGrid .card > img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1.08;
+    object-fit: cover;
+    filter: saturate(.92) contrast(1.04);
+    transition: transform .65s cubic-bezier(.2, .7, .2, 1), filter .4s ease;
+}
+
+#productGrid .card:hover > img {
+    transform: scale(1.055);
+    filter: saturate(1.04) contrast(1.06);
+}
+
+#productGrid .card-body {
+    padding: 19px 17px 17px;
+    background: linear-gradient(180deg, rgba(24, 20, 14, .96), #090909);
+}
+
+#productGrid .card-cat {
+    margin-bottom: 10px;
+    color: #c5a15a;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .19em;
+}
+
+#productGrid .card-title {
+    min-height: 42px;
+    color: #f2eee5;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: .015em;
+}
+
+#productGrid .card-price {
+    margin: 15px 0;
+    color: #d4b477;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: .035em;
+}
+
+#productGrid .add-btn {
+    width: 100%;
+    min-height: 41px;
+    border: 1px solid rgba(197, 161, 90, .65);
+    background: linear-gradient(135deg, rgba(197, 161, 90, .08), rgba(146, 113, 61, .02));
+    color: #d9bd83;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    transition: background .3s ease, color .3s ease, box-shadow .3s ease;
+}
+
+#productGrid .add-btn:hover {
+    background: linear-gradient(135deg, #c5a15a, #92713d);
+    border-color: #c5a15a;
+    color: #090909;
+    box-shadow: 0 5px 18px rgba(197, 161, 90, .2);
+}
+
+@media (max-width: 768px) {
+    #productGrid {
+        gap: 13px;
+    }
+
+    #productGrid .card-body {
+        padding: 14px 12px;
+    }
+
+    #productGrid .card-title {
+        font-size: 12px;
+        min-height: 38px;
+    }
+
+    #productGrid .card-price {
+        font-size: 14px;
+    }
+
+    #productGrid .add-btn {
+        min-height: 39px;
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #productGrid .card,
+    #productGrid .card > img,
+    #productGrid .add-btn {
+        transition: none;
+    }
+}
+
+/* OMNIA — CATÁLOGO PREMIUM NEGRO Y ORO */
+#productGrid .card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(155deg, #18140e 0%, #0b0b0a 75%);
+    border: 1px solid rgba(197, 161, 90, .28);
+    border-radius: 3px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .32);
+    transition: transform .4s ease, border-color .4s ease, box-shadow .4s ease;
+}
+
+#productGrid .card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(197, 161, 90, .8);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, .48), 0 0 22px rgba(146, 113, 61, .12);
+}
+
+#productGrid .card > img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1.08;
+    object-fit: cover;
+    filter: saturate(.92) contrast(1.04);
+    transition: transform .65s cubic-bezier(.2, .7, .2, 1), filter .4s ease;
+}
+
+#productGrid .card:hover > img {
+    transform: scale(1.055);
+    filter: saturate(1.04) contrast(1.06);
+}
+
+#productGrid .card-body {
+    padding: 19px 17px 17px;
+    background: linear-gradient(180deg, rgba(24, 20, 14, .96), #090909);
+}
+
+#productGrid .card-cat {
+    margin-bottom: 10px;
+    color: #c5a15a;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .19em;
+}
+
+#productGrid .card-title {
+    min-height: 42px;
+    color: #f2eee5;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: .015em;
+}
+
+#productGrid .card-price {
+    margin: 15px 0;
+    color: #d4b477;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: .035em;
+}
+
+#productGrid .add-btn {
+    width: 100%;
+    min-height: 41px;
+    border: 1px solid rgba(197, 161, 90, .65);
+    background: linear-gradient(135deg, rgba(197, 161, 90, .08), rgba(146, 113, 61, .02));
+    color: #d9bd83;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    transition: background .3s ease, color .3s ease, box-shadow .3s ease;
+}
+
+#productGrid .add-btn:hover {
+    background: linear-gradient(135deg, #c5a15a, #92713d);
+    border-color: #c5a15a;
+    color: #090909;
+    box-shadow: 0 5px 18px rgba(197, 161, 90, .2);
+}
+
+@media (max-width: 768px) {
+    #productGrid {
+        gap: 13px;
+    }
+
+    #productGrid .card-body {
+        padding: 14px 12px;
+    }
+
+    #productGrid .card-title {
+        font-size: 12px;
+        min-height: 38px;
+    }
+
+    #productGrid .card-price {
+        font-size: 14px;
+    }
+
+    #productGrid .add-btn {
+        min-height: 39px;
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #productGrid .card,
+    #productGrid .card > img,
+    #productGrid .add-btn {
+        transition: none;
+    }
+}
+
+/* OMNIA — Editorial banner premium black & gold */
+.editorial-banner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    min-height: 290px;
+    padding: 65px clamp(28px, 8vw, 110px);
+    overflow: hidden;
+    isolation: isolate;
+    border-top: 1px solid rgba(146, 113, 61, .42);
+    border-bottom: 1px solid rgba(146, 113, 61, .42);
+    background:
+        radial-gradient(ellipse at 82% 50%, rgba(146, 113, 61, .16), transparent 43%),
+        linear-gradient(110deg, #080808, #15110b 52%, #080808);
+}
+
+.editorial-banner::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: 300px;
+    height: 300px;
+    right: 12%;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px solid rgba(197, 161, 90, .13);
+    border-radius: 50%;
+    box-shadow: 0 0 0 24px rgba(197, 161, 90, .025),
+                0 0 0 48px rgba(197, 161, 90, .018);
+}
+
+.editorial-copy {
+    position: relative;
+    z-index: 1;
+    max-width: 620px;
+}
+
+.editorial-banner .section-eyebrow {
+    color: #C5A15A;
+    letter-spacing: .28em;
+}
+
+.editorial-banner h2 {
+    color: #f3eee5;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(30px, 4.5vw, 52px);
+    line-height: 1.2;
+    margin: 16px 0;
+}
+
+.editorial-banner p {
+    color: rgba(235, 226, 211, .72);
+    line-height: 1.8;
+    max-width: 480px;
+}
+
+.editorial-mark {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    color: rgba(197, 161, 90, .78);
+    font-family: serif;
+    font-size: clamp(100px, 17vw, 190px);
+    line-height: 1;
+    text-shadow: 0 0 35px rgba(146, 113, 61, .2);
+    animation: omniaEditorialGlow 5s ease-in-out infinite;
+}
+
+@keyframes omniaEditorialGlow {
+    0%, 100% { opacity: .68; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.045); }
+}
+
+@media (max-width: 600px) {
+    .editorial-banner {
+        min-height: 250px;
+        padding: 48px 7%;
+    }
+
+    .editorial-mark {
+        font-size: 76px;
+    }
+
+    .editorial-banner::before {
+        width: 180px;
+        height: 180px;
+        right: 3%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .editorial-mark {
+        animation: none;
+    }
+}
+
+/* OMNIA — Private Club newsletter */
+.newsletter-card {
+    position: relative;
+    border: 1px solid rgba(146, 113, 61, .48);
+    background:
+        radial-gradient(ellipse at 88% 45%, rgba(146, 113, 61, .17), transparent 42%),
+        linear-gradient(115deg, #0b0b0b, #17120b 58%, #080808);
+    box-shadow: 0 18px 55px rgba(0, 0, 0, .28);
+}
+
+.vip-badge {
+    display: inline-block;
+    color: #C5A15A;
+    letter-spacing: .25em;
+    font-weight: 600;
+}
+
+.newsletter-card h2 {
+    color: #f3eee5;
+}
+
+.newsletter-card p {
+    color: rgba(235, 226, 211, .72);
+}
+
+.newsletter-form input {
+    border: 1px solid rgba(197, 161, 90, .32);
+    background: #080808;
+    color: #f3eee5;
+    transition: border-color .25s ease, box-shadow .25s ease;
+}
+
+.newsletter-form input:focus {
+    border-color: #C5A15A;
+    box-shadow: 0 0 0 3px rgba(197, 161, 90, .10);
+}
+
+.newsletter-form input::placeholder {
+    color: rgba(235, 226, 211, .42);
+}
+
+.newsletter-form button {
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    color: #080808;
+    font-weight: 700;
+    letter-spacing: .04em;
+    transition: filter .25s ease, transform .25s ease;
+}
+
+.newsletter-form button:hover {
+    background: linear-gradient(135deg, #dec184, #a98449);
+    color: #080808;
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+}
+
+@media (max-width: 600px) {
+    .newsletter-card {
+        padding: 35px 22px;
+    }
+
+    .newsletter-form {
+        gap: 10px;
+    }
+}
+
+/* OMNIA — Premium footer */
+.footer {
+    position: relative;
+    border-top: 1px solid rgba(146, 113, 61, .42);
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(146, 113, 61, .11), transparent 48%),
+        linear-gradient(180deg, #0b0b0b, #050505 75%);
+}
+
+.footer-logo {
+    color: #C5A15A;
+    letter-spacing: .16em;
+    text-shadow: 0 0 22px rgba(197, 161, 90, .13);
+}
+
+.footer-logo span {
+    color: #C5A15A;
+}
+
+.footer-col h4 {
+    color: #C5A15A;
+    font-size: 11px;
+    letter-spacing: .18em;
+    margin-bottom: 20px;
+}
+
+.footer-col p,
+.footer-col li {
+    color: rgba(235, 226, 211, .66);
+}
+
+.footer-col a {
+    color: rgba(235, 226, 211, .72);
+    text-decoration: none;
+    transition: color .25s ease, padding-left .25s ease;
+}
+
+.footer-col a:hover {
+    color: #C5A15A;
+    padding-left: 4px;
+}
+
+.footer-secure {
+    color: #C5A15A !important;
+}
+
+.footer-payment-row {
+    border-top: 1px solid rgba(146, 113, 61, .25);
+    border-bottom: 1px solid rgba(146, 113, 61, .25);
+}
+
+.footer-payment-row > span {
+    color: #C5A15A;
+    letter-spacing: .16em;
+}
+
+.footer-bottom {
+    border-top: 1px solid rgba(146, 113, 61, .20);
+    color: rgba(235, 226, 211, .52);
+}
+
+.footer-bottom p,
+.footer-bottom span {
+    color: rgba(235, 226, 211, .52);
+}
+
+@media (max-width: 600px) {
+    .footer {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .footer-col h4 {
+        margin-bottom: 12px;
+    }
+
+    .footer-payment-row {
+        gap: 18px;
+    }
+}
+
+/* OMNIA — Premium header black & gold */
+.top-bar {
+    background: #050505;
+    border-bottom: 1px solid rgba(146, 113, 61, .30);
+    color: rgba(235, 226, 211, .68);
+}
+
+.top-controls select {
+    color: #C5A15A;
+    cursor: pointer;
+}
+
+.top-controls option {
+    background: #101010;
+    color: #f3eee5;
+}
+
+.navbar {
+    background: rgba(8, 8, 8, .97);
+    border-bottom: 1px solid rgba(146, 113, 61, .38);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(22px);
+}
+
+.nav-container {
+    gap: 26px;
+}
+
+.brand-logo {
+    flex-shrink: 0;
+}
+
+.brand-image {
+    filter: none;
+}
+
+.search-box input {
+    border: 1px solid rgba(146, 113, 61, .34);
+    background: #101010;
+    color: #f3eee5;
+    transition: border-color .25s ease, box-shadow .25s ease;
+}
+
+.search-box input:focus {
+    border-color: #C5A15A;
+    box-shadow: 0 0 0 3px rgba(197, 161, 90, .10);
+}
+
+.search-box input::placeholder {
+    color: rgba(235, 226, 211, .43);
+}
+
+.search-icon {
+    color: #C5A15A;
+}
+
+.nav-icon-btn {
+    color: #C5A15A;
+    border-color: rgba(146, 113, 61, .30);
+    transition: color .25s ease, background .25s ease;
+}
+
+.nav-icon-btn:hover {
+    color: #080808;
+    background: #C5A15A;
+}
+
+.menu-toggle {
+    border-color: rgba(146, 113, 61, .42);
+    color: #C5A15A;
+}
+
+.cart-btn {
+    border-color: rgba(197, 161, 90, .62);
+    color: #f3eee5;
+    background: rgba(146, 113, 61, .08);
+    transition: background .25s ease, border-color .25s ease;
+}
+
+.cart-btn:hover {
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    border-color: #C5A15A;
+    color: #080808;
+}
+
+@media (max-width: 900px) {
+    .navbar {
+        background: rgba(8, 8, 8, .98);
+    }
+
+    .nav-container {
+        gap: 12px;
+    }
+}
+
+
+/* OMNIA — Premium header black & gold */
+.top-bar {
+    background: #050505;
+    border-bottom: 1px solid rgba(146, 113, 61, .30);
+    color: rgba(235, 226, 211, .68);
+}
+
+.top-controls select {
+    color: #C5A15A;
+    cursor: pointer;
+}
+
+.top-controls option {
+    background: #101010;
+    color: #f3eee5;
+}
+
+.navbar {
+    background: rgba(8, 8, 8, .97);
+    border-bottom: 1px solid rgba(146, 113, 61, .38);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(22px);
+}
+
+.nav-container {
+    gap: 26px;
+}
+
+.brand-logo {
+    flex-shrink: 0;
+}
+
+.brand-image {
+    filter: none;
+}
+
+.search-box input {
+    border: 1px solid rgba(146, 113, 61, .34);
+    background: #101010;
+    color: #f3eee5;
+    transition: border-color .25s ease, box-shadow .25s ease;
+}
+
+.search-box input:focus {
+    border-color: #C5A15A;
+    box-shadow: 0 0 0 3px rgba(197, 161, 90, .10);
+}
+
+.search-box input::placeholder {
+    color: rgba(235, 226, 211, .43);
+}
+
+.search-icon {
+    color: #C5A15A;
+}
+
+.nav-icon-btn {
+    color: #C5A15A;
+    border-color: rgba(146, 113, 61, .30);
+    transition: color .25s ease, background .25s ease;
+}
+
+.nav-icon-btn:hover {
+    color: #080808;
+    background: #C5A15A;
+}
+
+.menu-toggle {
+    border-color: rgba(146, 113, 61, .42);
+    color: #C5A15A;
+}
+
+.cart-btn {
+    border-color: rgba(197, 161, 90, .62);
+    color: #f3eee5;
+    background: rgba(146, 113, 61, .08);
+    transition: background .25s ease, border-color .25s ease;
+}
+
+.cart-btn:hover {
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    border-color: #C5A15A;
+    color: #080808;
+}
+
+@media (max-width: 900px) {
+    .navbar {
+        background: rgba(8, 8, 8, .98);
+    }
+
+    .nav-container {
+        gap: 12px;
+    }
+}
+
+
+/* OMNIA — Phase 7: Cinematic Hero */
+.hero {
+    min-height: 650px;
+    border-bottom: 1px solid rgba(146, 113, 61, .42);
+    background:
+        radial-gradient(ellipse at 78% 48%, rgba(146, 113, 61, .19), transparent 35%),
+        radial-gradient(ellipse at 90% 15%, rgba(197, 161, 90, .10), transparent 32%),
+        linear-gradient(115deg, #050505 0%, #0c0b09 52%, #080808 100%);
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(0,0,0,.22), transparent 75%);
+}
+
+#heroCanvas {
+    opacity: .42;
+}
+
+.hero-content {
+    padding-top: 105px;
+    padding-bottom: 105px;
+}
+
+.hero-subtitle {
+    color: #C5A15A;
+    letter-spacing: .34em;
+    text-shadow: 0 0 18px rgba(197,161,90,.25);
+}
+
+.hero-content h1 {
+    color: #f3eee5;
+    text-shadow: 0 5px 30px rgba(0,0,0,.45);
+}
+
+.hero-content p {
+    color: rgba(235,226,211,.72);
+}
+
+.hero-btn {
+    min-height: 52px;
+    padding: 0 30px;
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    box-shadow: 0 7px 24px rgba(146,113,61,.18);
+}
+
+.hero-btn:hover {
+    background: #e0c184;
+    color: #080808;
+    box-shadow: 0 10px 30px rgba(197,161,90,.25);
+}
+
+.hero-secondary-btn {
+    border: 1px solid rgba(197,161,90,.58);
+    color: #C5A15A;
+    transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+
+.hero-secondary-btn:hover {
+    background: rgba(197,161,90,.12);
+    border-color: #C5A15A;
+    color: #f3eee5;
+}
+
+.hero-signature {
+    color: rgba(197,161,90,.20);
+}
+
+@media (max-width: 700px) {
+    .hero {
+        min-height: 570px;
+    }
+
+    .hero-content {
+        padding: 85px 7%;
+    }
+
+    .hero-content h1 {
+        font-size: clamp(38px, 10vw, 54px);
+    }
+
+    .hero-content p {
+        font-size: 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-btn,
+    .hero-secondary-btn {
+        transition: none;
+    }
+}
+
+
+/* OMNIA — Phase 8: Brand Experience */
+.brand-intro {
+    position: relative;
+    display: grid;
+    grid-template-columns: 8px 1fr minmax(260px, .75fr);
+    align-items: center;
+    gap: 42px;
+    padding: 100px 9%;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(146,113,61,.32);
+    background:
+        radial-gradient(ellipse at 12% 50%, rgba(146,113,61,.13), transparent 42%),
+        linear-gradient(110deg, #080808, #0e0c09 55%, #080808);
+}
+
+.brand-intro-line {
+    width: 2px;
+    height: 125px;
+    background: linear-gradient(to bottom, transparent, #C5A15A, transparent);
+    box-shadow: 0 0 18px rgba(197,161,90,.28);
+}
+
+.brand-intro .section-eyebrow {
+    color: #C5A15A;
+    letter-spacing: .28em;
+}
+
+.brand-intro h2 {
+    margin-top: 18px;
+    color: #f3eee5;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 500;
+    line-height: 1.2;
+    text-shadow: 0 5px 24px rgba(0,0,0,.35);
+}
+
+.brand-intro > p {
+    max-width: 440px;
+    margin: 0;
+    color: rgba(235,226,211,.68);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 2;
+    letter-spacing: .025em;
+}
+
+@media (max-width: 760px) {
+    .brand-intro {
+        grid-template-columns: 3px 1fr;
+        gap: 22px;
+        padding: 70px 7%;
+    }
+
+    .brand-intro-line {
+        height: 105px;
+    }
+
+    .brand-intro > p {
+        grid-column: 2;
+        font-size: 14px;
+        line-height: 1.85;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brand-intro * {
+        scroll-behavior: auto;
+    }
+}
+
+
+/* OMNIA — Phase 8: Brand Experience */
+.brand-intro {
+    position: relative;
+    display: grid;
+    grid-template-columns: 8px 1fr minmax(260px, .75fr);
+    align-items: center;
+    gap: 42px;
+    padding: 100px 9%;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(146,113,61,.32);
+    background:
+        radial-gradient(ellipse at 12% 50%, rgba(146,113,61,.13), transparent 42%),
+        linear-gradient(110deg, #080808, #0e0c09 55%, #080808);
+}
+
+.brand-intro-line {
+    width: 2px;
+    height: 125px;
+    background: linear-gradient(to bottom, transparent, #C5A15A, transparent);
+    box-shadow: 0 0 18px rgba(197,161,90,.28);
+}
+
+.brand-intro .section-eyebrow {
+    color: #C5A15A;
+    letter-spacing: .28em;
+}
+
+.brand-intro h2 {
+    margin-top: 18px;
+    color: #f3eee5;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 500;
+    line-height: 1.2;
+    text-shadow: 0 5px 24px rgba(0,0,0,.35);
+}
+
+.brand-intro > p {
+    max-width: 440px;
+    margin: 0;
+    color: rgba(235,226,211,.68);
+    font-size: 15px;
+    font-weight: 300;
+    line-height: 2;
+    letter-spacing: .025em;
+}
+
+@media (max-width: 760px) {
+    .brand-intro {
+        grid-template-columns: 3px 1fr;
+        gap: 22px;
+        padding: 70px 7%;
+    }
+
+    .brand-intro-line {
+        height: 105px;
+    }
+
+    .brand-intro > p {
+        grid-column: 2;
+        font-size: 14px;
+        line-height: 1.85;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brand-intro * {
+        scroll-behavior: auto;
+    }
+}
+
+
+/* OMNIA — Phase 9: Premium Catalog Filters */
+.filter-bar {
+    gap: 11px;
+    margin-bottom: 36px;
+    padding: 0 0 20px;
+    border-bottom: 1px solid rgba(146,113,61,.34);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-bar .cat-btn {
+    flex: 0 0 auto;
+    padding: 12px 19px;
+    border: 1px solid rgba(146,113,61,.30);
+    border-radius: 2px;
+    background: linear-gradient(145deg, #11100e, #090909);
+    color: rgba(235,226,211,.70);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    transition: color .25s ease, background .25s ease,
+                border-color .25s ease, transform .25s ease;
+}
+
+.filter-bar .cat-btn:hover {
+    border-color: #C5A15A;
+    background: rgba(146,113,61,.13);
+    color: #C5A15A;
+    transform: translateY(-2px);
+}
+
+.filter-bar .cat-btn.active {
+    border-color: #C5A15A;
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    color: #080808;
+    box-shadow: 0 4px 16px rgba(146,113,61,.20);
+}
+
+@media (max-width: 700px) {
+    .filter-bar {
+        gap: 8px;
+        margin-bottom: 26px;
+        padding-bottom: 15px;
+    }
+
+    .filter-bar .cat-btn {
+        padding: 11px 15px;
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .filter-bar .cat-btn {
+        transition: none;
+    }
+}
+
+
+/* OMNIA — Phase 10: Editorial Catalog Heading */
+.catalog-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding-bottom: 26px;
+    border-bottom: 1px solid rgba(146,113,61,.30);
+}
+
+.catalog-heading .section-eyebrow {
+    display: inline-block;
+    margin-bottom: 14px;
+    color: #C5A15A;
+    font-size: 10px;
+    letter-spacing: .30em;
+}
+
+.catalog-heading h2 {
+    margin: 0;
+    color: #f3eee5;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(30px, 4vw, 46px);
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.catalog-meta {
+    padding: 9px 14px;
+    border: 1px solid rgba(146,113,61,.42);
+    color: #C5A15A;
+    font-size: 10px;
+    letter-spacing: .20em;
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .catalog-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+    }
+
+    .catalog-heading h2 {
+        font-size: clamp(28px, 8vw, 36px);
+    }
+}
+
+
+/* OMNIA — Phase 11: Luxury Product Cards */
+#productGrid .card {
+    position: relative;
+    background: linear-gradient(155deg, #12110f, #080808 72%);
+    border: 1px solid rgba(146,113,61,.34);
+    border-radius: 3px;
+    box-shadow: 0 8px 25px rgba(0,0,0,.20);
+    transition: transform .35s ease, border-color .35s ease,
+                box-shadow .35s ease;
+}
+
+#productGrid .card:hover {
+    transform: translateY(-7px);
+    border-color: rgba(197,161,90,.85);
+    box-shadow: 0 16px 38px rgba(0,0,0,.42),
+                0 0 22px rgba(146,113,61,.10);
+}
+
+#productGrid .card > img {
+    background: #10100e;
+    transition: transform .6s ease, filter .4s ease;
+}
+
+#productGrid .card:hover > img {
+    transform: scale(1.045);
+    filter: saturate(1.02);
+}
+
+#productGrid .card-body {
+    padding: 20px 18px 19px;
+    border-top: 1px solid rgba(146,113,61,.18);
+}
+
+#productGrid .card-cat {
+    color: #C5A15A;
+    font-size: 9px;
+    letter-spacing: .19em;
+}
+
+#productGrid .card-title {
+    color: #f3eee5;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+#productGrid .card-price {
+    margin: 15px 0;
+    color: #D5B675;
+    font-size: 17px;
+    letter-spacing: .025em;
+}
+
+#productGrid .add-btn {
+    min-height: 42px;
+    border: 1px solid rgba(197,161,90,.65);
+    background: rgba(146,113,61,.08);
+    color: #C5A15A;
+    font-weight: 600;
+    letter-spacing: .13em;
+    transition: background .25s ease, color .25s ease,
+                box-shadow .25s ease;
+}
+
+#productGrid .add-btn:hover {
+    background: linear-gradient(135deg, #C5A15A, #92713D);
+    color: #080808;
+    box-shadow: 0 5px 18px rgba(146,113,61,.20);
+}
+
+@media (max-width: 700px) {
+    #productGrid .card-body {
+        padding: 14px 12px;
+    }
+
+    #productGrid .card-price {
+        font-size: 15px;
+    }
+
+    #productGrid .add-btn {
+        min-height: 39px;
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #productGrid .card,
+    #productGrid .card > img,
+    #productGrid .add-btn {
+        transition: none;
+    }
+}
+
+
+/* =========================================
+   OMNIA FASE 12 — PRODUCT DETAIL MODAL
+   Premium Black & Metallic Gold
+   ========================================= */
+
+#productModal .product-detail {
+    width: min(1080px, 100%);
+    padding: 38px;
+    border: 1px solid rgba(146, 113, 61, 0.65);
+    border-radius: 3px;
+    background:
+        radial-gradient(ellipse at 15% 10%, rgba(146,113,61,.10), transparent 42%),
+        linear-gradient(145deg, #111110, #080808 72%);
+    box-shadow: 0 25px 90px rgba(0,0,0,.75);
+}
+
+#productModal .close-btn {
+    top: 13px;
+    right: 17px;
+    color: #C5A15A;
+    transition: color .25s ease, transform .25s ease;
+}
+
+#productModal .close-btn:hover {
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+#productModal .modal-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: 42px;
+    align-items: start;
+}
+
+#productModal .modal-img-container {
+    position: relative;
+    overflow: hidden;
+    padding: 10px;
+    border: 1px solid rgba(146,113,61,.45);
+    background: linear-gradient(145deg, #171613, #090909);
+    box-shadow: 0 12px 35px rgba(0,0,0,.35);
+}
+
+#productModal .modal-img-container > img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background: #0b0b0b;
+    transition: transform .5s ease;
+}
+
+#productModal .modal-img-container:hover > img {
+    transform: scale(1.025);
+}
+
+#productModal .gallery-nav {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    width: 38px;
+    height: 38px;
+    transform: translateY(-50%);
+    border: 1px solid rgba(197,161,90,.75);
+    border-radius: 50%;
+    background: rgba(8,8,8,.85);
+    color: #C5A15A;
+    font-size: 25px;
+    cursor: pointer;
+    transition: background .25s ease, color .25s ease;
+}
+
+#productModal .gallery-nav:hover {
+    background: #C5A15A;
+    color: #080808;
+}
+
+#productModal .gallery-prev { left: 18px; }
+#productModal .gallery-next { right: 18px; }
+
+#productModal .product-thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 9px;
+    padding: 12px 2px 2px;
+}
+
+#productModal .product-thumbnails img,
+#productModal .product-thumbnails button {
+    max-width: 66px;
+    border: 1px solid rgba(146,113,61,.45);
+    background: #111;
+    cursor: pointer;
+    transition: border-color .25s ease, opacity .25s ease;
+}
+
+#productModal .product-thumbnails img:hover,
+#productModal .product-thumbnails button:hover {
+    border-color: #C5A15A;
+    opacity: .85;
+}
+
+#productModal .modal-info {
+    padding-top: 8px;
+}
+
+#productModal #modalProductCat {
+    color: #C5A15A;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 10px;
+}
+
+#productModal .modal-info h2 {
+    margin: 13px 0;
+    color: #F4F0E8;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(23px, 3vw, 32px);
+    line-height: 1.25;
+}
+
+#productModal #modalProductDesc {
+    color: #aaa49a;
+    line-height: 1.8;
+    font-size: 13px;
+}
+
+#productModal #modalProductVariants {
+    margin-top: 20px;
+}
+
+#productModal #modalProductVariants .variant-select {
+    min-height: 43px;
+    border-color: rgba(146,113,61,.65);
+    border-radius: 2px;
+    background: #111;
+    color: #F4F0E8;
+}
+
+#productModal .modal-price {
+    margin: 24px 0;
+    padding: 15px 0;
+    border-top: 1px solid rgba(146,113,61,.3);
+    border-bottom: 1px solid rgba(146,113,61,.3);
+    color: #C5A15A;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: .5px;
+}
+
+#productModal .cultural-tip {
+    color: #aaa49a;
+    line-height: 1.7;
+}
+
+#productModal .qty-selector {
+    margin: 23px 0;
+}
+
+#productModal .qty-selector label {
+    color: #C5A15A;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+#productModal .qty-controls {
+    border: 1px solid rgba(146,113,61,.65);
+    background: #101010;
+}
+
+#productModal .qty-controls button,
+#productModal .qty-controls input {
+    background: #101010;
+    color: #F4F0E8;
+}
+
+#productModal .qty-controls button {
+    color: #C5A15A;
+    transition: background .2s ease, color .2s ease;
+}
+
+#productModal .qty-controls button:hover {
+    background: #C5A15A;
+    color: #080808;
+}
+
+#productModal .dark-add-btn {
+    min-height: 51px;
+    border: 1px solid #C5A15A;
+    border-radius: 2px;
+    background: linear-gradient(110deg, #92713D, #C5A15A);
+    color: #080808;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    transition: box-shadow .25s ease, transform .25s ease;
+}
+
+#productModal .dark-add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(197,161,90,.22);
+}
+
+#productModal .express-checkout-box {
+    margin-top: 22px;
+    padding: 20px;
+    border: 1px solid rgba(146,113,61,.5);
+    background: linear-gradient(145deg, #11110f, #090909);
+}
+
+#productModal .express-title {
+    color: #C5A15A !important;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+#productModal .secure-payment-note {
+    color: #d1cbc0;
+}
+
+#productModal .other-payments-link a {
+    color: #C5A15A;
+    transition: color .2s ease;
+}
+
+#productModal .other-payments-link a:hover {
+    color: #fff;
+}
+
+@media (max-width: 700px) {
+    #productModal {
+        padding: 8px;
+    }
+
+    #productModal .product-detail {
+        max-height: 94vh;
+        padding: 34px 16px 20px;
+    }
+
+    #productModal .modal-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+    }
+
+    #productModal .modal-img-container {
+        padding: 6px;
+    }
+
+    #productModal .modal-img-container > img {
+        max-height: 320px;
+    }
+
+    #productModal .modal-info h2 {
+        font-size: 23px;
+    }
+
+    #productModal .modal-price {
+        font-size: 24px;
+    }
+
+    #productModal .express-checkout-box {
+        padding: 15px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #productModal .modal-img-container > img,
+    #productModal .gallery-nav,
+    #productModal .dark-add-btn,
+    #productModal .close-btn {
+        transition: none;
+    }
+}
+
+
+/* =========================================
+   OMNIA FASE 13 — LUXURY SHOPPING BAG
+   Premium Black & Metallic Gold
+   ========================================= */
+
+#cartModal .cart-modal-content {
+    width: min(760px, 100%);
+    max-height: 90vh;
+    padding: 36px;
+    border: 1px solid rgba(146,113,61,.65);
+    border-radius: 3px;
+    background:
+        radial-gradient(ellipse at 15% 5%, rgba(146,113,61,.10), transparent 42%),
+        linear-gradient(145deg, #111110, #080808 75%);
+    box-shadow: 0 25px 90px rgba(0,0,0,.75);
+}
+
+#cartModal .close-btn {
+    color: #C5A15A;
+    transition: color .2s ease, transform .2s ease;
+}
+
+#cartModal .close-btn:hover {
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+#cartModal .modal-heading {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(146,113,61,.4);
+}
+
+#cartModal .modal-heading .section-eyebrow {
+    color: #C5A15A;
+    letter-spacing: 2.5px;
+}
+
+#cartModal .modal-heading h2 {
+    margin: 10px 0 0;
+    color: #F4F0E8;
+    font-family: 'Cinzel', serif;
+    font-size: 29px;
+    font-weight: 500;
+}
+
+#cartModal #cartItems {
+    color: #F4F0E8;
+}
+
+#cartModal .cart-item-row {
+    gap: 18px;
+    margin: 0;
+    padding: 17px 0;
+    border-bottom: 1px solid rgba(146,113,61,.25);
+    transition: background .25s ease;
+}
+
+#cartModal .cart-item-image {
+    flex-shrink: 0;
+    border: 1px solid rgba(146,113,61,.55);
+    border-radius: 2px;
+    background: #101010;
+}
+
+#cartModal .cart-item-name {
+    color: #F4F0E8;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+#cartModal .cart-item-price {
+    color: #C5A15A;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#cartModal .cart-item-variant,
+#cartModal .cart-item-quantity {
+    color: #aaa49a;
+}
+
+#cartModal .cart-remove-btn {
+    border: 1px solid rgba(146,113,61,.45);
+    border-radius: 2px;
+    background: transparent;
+    color: #C5A15A;
+    transition: background .2s ease, color .2s ease;
+}
+
+#cartModal .cart-remove-btn:hover {
+    border-color: #C5A15A;
+    background: #C5A15A;
+    color: #080808;
+}
+
+#cartModal .cart-summary {
+    margin-top: 25px;
+    padding-top: 22px;
+    border-top: 1px solid rgba(146,113,61,.55);
+}
+
+#cartModal .cart-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 8px 0 20px;
+    color: #F4F0E8;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+#cartModal .cart-total-row strong {
+    color: #C5A15A;
+    font-size: 25px;
+    font-weight: 600;
+}
+
+#cartModal .paypal-cart-button {
+    width: 100%;
+    margin: 14px 0;
+}
+
+#cartModal .checkout-methods {
+    margin-top: 14px;
+}
+
+#cartModal .alt-payment-btn {
+    min-height: 49px;
+    border: 1px solid #C5A15A;
+    border-radius: 2px;
+    background: linear-gradient(110deg, #92713D, #C5A15A);
+    color: #080808;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+#cartModal .alt-payment-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(197,161,90,.2);
+}
+
+#cartModal .checkout-trust {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 20px;
+    margin-top: 22px;
+    padding-top: 17px;
+    border-top: 1px solid rgba(146,113,61,.25);
+    color: #aaa49a;
+    font-size: 10px;
+    letter-spacing: .5px;
+}
+
+#cartModal .checkout-trust span:first-child {
+    color: #C5A15A;
+}
+
+@media (max-width: 600px) {
+    #cartModal {
+        padding: 8px;
+    }
+
+    #cartModal .cart-modal-content {
+        max-height: 94vh;
+        padding: 32px 16px 20px;
+    }
+
+    #cartModal .modal-heading h2 {
+        font-size: 25px;
+    }
+
+    #cartModal .cart-item-row {
+        gap: 10px;
+        padding: 13px 0;
+    }
+
+    #cartModal .cart-item-name {
+        font-size: 12px;
+    }
+
+    #cartModal .cart-total-row strong {
+        font-size: 22px;
+    }
+
+    #cartModal .checkout-trust {
+        gap: 10px;
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #cartModal .close-btn,
+    #cartModal .cart-remove-btn,
+    #cartModal .alt-payment-btn {
+        transition: none;
+    }
+}
+
+
+/* OMNIA HERO — composición editorial en dos columnas */
+.hero-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr);
+    align-items: center;
+    gap: clamp(28px, 5vw, 76px);
+    width: min(1500px, 100%);
+    padding: 88px 8%;
+}
+
+.hero-copy {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+}
+
+.hero-title-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    padding-top: 8px;
+}
+
+.hero-title-frame h1 {
+    max-width: 760px;
+    margin: 0;
+    background: linear-gradient(
+        110deg,
+        #80602f 0%,
+        #e5ca8d 22%,
+        #a98243 42%,
+        #f0dba8 55%,
+        #92713d 73%,
+        #d8b978 100%
+    );
+    background-size: 240% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: omniaHeroTextShine 7s ease-in-out infinite;
+    filter: drop-shadow(0 5px 22px rgba(146,113,61,.16));
+}
+
+.hero-title-line {
+    display: block;
+    width: min(100%, 390px);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #92713d 18%, #c5a15a 50%, transparent);
+    transform-origin: left center;
+    animation: omniaHeroLineGlow 4s ease-in-out infinite alternate;
+}
+
+.hero-artwork {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+    width: min(100%, 490px);
+    min-height: 440px;
+    isolation: isolate;
+}
+
+.hero-art-glow {
+    position: absolute;
+    inset: 15%;
+    z-index: -2;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(197,161,90,.2), rgba(146,113,61,.06) 42%, transparent 72%);
+    filter: blur(24px);
+    animation: omniaHeroArtGlow 6s ease-in-out infinite alternate;
+}
+
+.hero-art-ring {
+    position: absolute;
+    width: 72%;
+    aspect-ratio: 1;
+    border: 1px solid rgba(197,161,90,.24);
+    border-radius: 50%;
+    box-shadow: 0 0 35px rgba(146,113,61,.08), inset 0 0 35px rgba(146,113,61,.05);
+}
+
+.hero-art-ring-one {
+    transform: rotateX(65deg) rotate(-24deg);
+    animation: omniaHeroRing 18s linear infinite;
+}
+
+.hero-art-ring-two {
+    width: 88%;
+    transform: rotateX(65deg) rotate(32deg);
+    border-color: rgba(197,161,90,.13);
+    animation: omniaHeroRing 25s linear infinite reverse;
+}
+
+.hero-art-svg {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    max-height: 510px;
+    overflow: visible;
+    filter: drop-shadow(0 0 24px rgba(146,113,61,.16));
+    animation: omniaHeroArtworkFloat 7s ease-in-out infinite;
+}
+
+.hero-art-caption {
+    position: absolute;
+    bottom: 3%;
+    left: 50%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    align-items: center;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    color: rgba(197,161,90,.72);
+    letter-spacing: .3em;
+    font-size: 9px;
+}
+
+.hero-art-caption span:first-child {
+    font-family: 'Cinzel', serif;
+    font-size: 17px;
+    letter-spacing: .42em;
+    color: #c5a15a;
+}
+
+@keyframes omniaHeroTextShine {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes omniaHeroLineGlow {
+    from { opacity: .48; transform: scaleX(.72); }
+    to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes omniaHeroArtGlow {
+    from { opacity: .45; transform: scale(.88); }
+    to { opacity: .9; transform: scale(1.12); }
+}
+
+@keyframes omniaHeroRing {
+    from { rotate: 0deg; }
+    to { rotate: 360deg; }
+}
+
+@keyframes omniaHeroArtworkFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@media (max-width: 760px) {
+    .hero-content {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 82px 7% 65px;
+        text-align: center;
+    }
+
+    .hero-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .hero-title-frame {
+        align-items: center;
+    }
+
+    .hero-title-frame h1 {
+        font-size: clamp(36px, 9vw, 54px);
+    }
+
+    .hero-title-line {
+        width: min(78vw, 330px);
+    }
+
+    .hero-content p {
+        max-width: 520px;
+    }
+
+    .hero-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .hero-artwork {
+        width: min(88vw, 390px);
+        min-height: 330px;
+        margin-top: 4px;
+    }
+
+    .hero-art-caption {
+        bottom: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-title-frame h1,
+    .hero-title-line,
+    .hero-art-glow,
+    .hero-art-ring,
+    .hero-art-svg {
+        animation: none !important;
+    }
+}
+
+/* OMNIA — LOGO TRANSPARENTE DEL ENCABEZADO */
+.brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 0;
+}
+
+.brand-image {
+    display: block;
+    width: 120px;
+    height: 74px;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: center;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 100px;
+        height: 66px;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-image {
+        width: 88px;
+        height: 64px;
+    }
+}
+
+/* OMNIA — ENCABEZADO CON LOGO XL */
+.nav-container {
+    min-height: 120px;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    height: 112px;
+    overflow: visible;
+}
+
+.brand-image {
+    width: 180px;
+    height: 108px;
+    max-width: none;
+    object-fit: contain;
+    object-position: center;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .nav-container {
+        min-height: 104px;
+    }
+
+    .brand-logo {
+        height: 98px;
+    }
+
+    .brand-image {
+        width: 150px;
+        height: 94px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-container {
+        min-height: 96px;
+    }
+
+    .brand-logo {
+        height: 90px;
+    }
+
+    .brand-image {
+        width: 132px;
+        height: 86px;
+    }
+}
+
+/* OMNIA — AJUSTE FINAL DE TAMAÑO DEL LOGO */
+.nav-container {
+    min-height: 128px;
+}
+
+.brand-logo {
+    height: 120px;
+}
+
+.brand-image {
+    width: 200px;
+    height: 116px;
+}
+
+@media (max-width: 900px) {
+    .nav-container {
+        min-height: 112px;
+    }
+
+    .brand-logo {
+        height: 106px;
+    }
+
+    .brand-image {
+        width: 165px;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-container {
+        min-height: 104px;
+    }
+
+    .brand-logo {
+        height: 98px;
+    }
+
+    .brand-image {
+        width: 145px;
+        height: 92px;
+    }
+}
+
+/* OMNIA — LOGO DE ENCABEZADO TRIPLE TAMAÑO */
+.nav-container {
+    min-height: 370px;
+}
+
+.brand-logo {
+    height: 358px;
+    width: 100%;
+}
+
+.brand-image {
+    width: 600px;
+    height: 348px;
+    max-width: none;
+    object-fit: contain;
+    object-position: left center;
+}
+
+@media (max-width: 900px) {
+    .nav-container {
+        min-height: 310px;
+    }
+
+    .brand-logo {
+        height: 298px;
+    }
+
+    .brand-image {
+        width: 500px;
+        height: 288px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-container {
+        min-height: 270px;
+    }
+
+    .brand-logo {
+        height: 258px;
+    }
+
+    .brand-image {
+        width: 435px;
+        height: 248px;
+    }
+}
+
+/* OMNIA — RESTAURAR ENCABEZADO ORIGINAL Y AMPLIAR SOLO EL LOGO */
+.nav-container {
+    min-height: 82px;
+}
+
+.brand-logo {
+    height: auto;
+    width: auto;
+    overflow: visible;
+}
+
+.brand-image {
+    width: 180px;
+    height: 215px;
+    max-width: none;
+    object-fit: contain;
+    object-position: center;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .nav-container {
+        min-height: 72px;
+    }
+
+    .brand-logo {
+        height: auto;
+    }
+
+    .brand-image {
+        width: 150px;
+        height: 180px;
+    }
+}
+
+/* OMNIA — LOGO GRANDE SIN ALTERAR LA ALTURA DEL FRONTEND */
+.nav-container {
+    min-height: 82px;
+}
+
+.brand-logo {
+    position: relative;
+    display: block;
+    width: 220px;
+    height: 54px;
+    overflow: visible;
+    z-index: 10;
+}
+
+.brand-image {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 180px;
+    height: 215px;
+    max-width: none;
+    object-fit: contain;
+    object-position: center;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .nav-container {
+        min-height: 72px;
+    }
+
+    .brand-logo {
+        width: 145px;
+        height: 44px;
+    }
+
+    .brand-image {
+        width: 150px;
+        height: 180px;
+    }
+}
+
+/* OMNIA — DIMENSIONES DEFINITIVAS DEL LOGO */
+.brand-image {
+    width: 179px;
+    height: 214px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 149px;
+        height: 179px;
+    }
+}
+
+/* OMNIA — REDUCCIÓN DE 1 PX */
+.brand-image {
+    width: 178px;
+    height: 213px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 148px;
+        height: 178px;
+    }
+}
+
+/* OMNIA — AJUSTE MÍNIMO DEL LOGO */
+.brand-image {
+    width: 177px;
+    height: 212px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 147px;
+        height: 177px;
+    }
+}
+
+/* OMNIA — REDUCCIÓN DE 2 PX */
+.brand-image {
+    width: 175px;
+    height: 210px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 145px;
+        height: 175px;
+    }
+}
+
+/* OMNIA — REDUCCIÓN DE 3 PX */
+.brand-image {
+    width: 172px;
+    height: 207px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 142px;
+        height: 172px;
+    }
+}
+
+/* OMNIA — AJUSTE FINO DEL LOGO */
+.brand-image {
+    width: 169px;
+    height: 204px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 139px;
+        height: 169px;
+    }
+}
+
+/* OMNIA — AJUSTE FINO DEL LOGO */
+.brand-image {
+    width: 166px;
+    height: 201px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 136px;
+        height: 166px;
+    }
+}
+
+/* OMNIA — TAMAÑO FINAL DEL LOGO */
+.brand-image {
+    width: 163px;
+    height: 198px;
+}
+
+@media (max-width: 900px) {
+    .brand-image {
+        width: 133px;
+        height: 163px;
+    }
+}
+
+
+/* OMNIA — NAVEGACIÓN Y TARJETAS CON IMÁGENES REALES */
+#catalog[hidden] { display: none !important; }
+
+@media (min-width: 1201px) {
+    .nav-container {
+        grid-template-columns: 220px auto minmax(180px, 1fr) auto;
+        gap: 16px;
+    }
+    .primary-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(10px, 1.2vw, 18px);
+        white-space: nowrap;
+    }
+    .primary-nav a {
+        color: #d7d0c3;
+        text-decoration: none;
+        font-size: 11px;
+        letter-spacing: .08em;
+        transition: color .2s ease;
+    }
+    .primary-nav a:hover { color: #C5A15A; }
+    .search-box { max-width: 340px; min-width: 0; }
+}
+@media (max-width: 1200px) {
+    .primary-nav { display: none; }
+}
+.omnia-category-card .category-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: .48;
+    z-index: -2;
+    transition: transform .55s ease, opacity .35s ease;
+}
+.omnia-category-card:hover .category-image {
+    transform: scale(1.06);
+    opacity: .62;
+}
+.omnia-category-card .category-number,
+.omnia-category-card .category-card-copy {
+    position: relative;
+    z-index: 1;
+}
+
+
+/* OMNIA — BOTÓN PRINCIPAL DEL HERO CENTRADO */
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+
+/* OMNIA — botones principales del modal de producto */
+#productModal #buyNowCheckoutBtn {
+    display: block;
+    width: 100%;
+    min-height: 51px;
+    margin-top: 13px;
+    padding: 14px 20px;
+    border: 1px solid #C5A15A;
+    border-radius: 2px;
+    background: linear-gradient(145deg, #111110, #080808);
+    color: #D8B875;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .25s ease, color .25s ease,
+                box-shadow .25s ease, transform .25s ease;
+}
+
+#productModal #buyNowCheckoutBtn:hover {
+    background: linear-gradient(110deg, #92713D, #C5A15A);
+    color: #080808;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(197,161,90,.22);
 }
