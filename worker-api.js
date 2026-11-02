@@ -1578,6 +1578,132 @@ const removeBackgroundMatch = path.match(
     }
 
 
+    if (method === "POST" && path === "/api/shipping/quote") {
+      try {
+        const body = await request.json();
+        const items = body.items;
+        const destination = body.address_to || {};
+
+        if (!Array.isArray(items) || items.length < 1 || items.length > 20) {
+          return json({ status: "error", message: "Artículos inválidos." }, 400);
+        }
+
+        const requiredAddress = [
+          "first_name", "last_name", "country", "address1", "city", "zip"
+        ];
+
+        for (const field of requiredAddress) {
+          if (typeof destination[field] !== "string" || !destination[field].trim()) {
+            return json({ status: "error", message: "Falta un dato obligatorio de la dirección: " + field }, 400);
+          }
+        }
+
+        const addressTo = {};
+        for (const field of [
+          "first_name", "last_name", "email", "phone", "country",
+          "region", "address1", "address2", "city", "zip"
+        ]) {
+          const value = String(destination[field] || "").trim();
+          if (value.length > 250) {
+            return json({ status: "error", message: "Dato de dirección demasiado largo." }, 400);
+          }
+          if (value) addressTo[field] = value;
+        }
+
+        addressTo.country = addressTo.country.toUpperCase();
+        if (!/^[A-Z]{2}$/.test(addressTo.country)) {
+          return json({ status: "error", message: "Código de país inválido." }, 400);
+        }
+
+        const lineItems = [];
+        let shopId = "";
+
+        for (const item of items) {
+          const productId = String(item.printify_product_id || item.product_id || "");
+          const variantId = String(item.variant_id || "");
+          const quantity = Number(item.quantity);
+
+          if (
+            !productId ||
+            !/^\d+$/.test(variantId) ||
+            !Number.isInteger(quantity) ||
+            quantity < 1 ||
+            quantity > 20
+          ) {
+            return json({ status: "error", message: "Artículo, variante o cantidad inválidos." }, 400);
+          }
+
+          const product = await getPublicProduct(productId);
+          if (!product) {
+            return json({ status: "error", message: "Un producto no está publicado o disponible en OMNIA." }, 400);
+          }
+
+          const normalized = normalizePublicProduct(product);
+          const variants = Array.isArray(normalized.variants) ? normalized.variants : [];
+          const variant = variants.find(v =>
+            v && String(v.id) === variantId &&
+            v.is_enabled !== false && v.is_available !== false
+          );
+
+          if (!variant) {
+            return json({ status: "error", message: "Una variante no está disponible." }, 400);
+          }
+
+          const currentShopId = /^\d+$/.test(String(product.shop_id || ""))
+            ? String(product.shop_id)
+            : String(env.PRINTIFY_SHOP_ID || "");
+
+          if (!/^\d+$/.test(currentShopId)) {
+            return json({ status: "error", message: "No se pudo identificar la tienda de Printify." }, 500);
+          }
+
+          if (shopId && shopId !== currentShopId) {
+            return json({ status: "error", message: "Todos los productos deben pertenecer a la misma tienda." }, 400);
+          }
+
+          shopId = currentShopId;
+          lineItems.push({
+            product_id: product.printify_id,
+            variant_id: Number(variantId),
+            quantity
+          });
+        }
+
+        const response = await printifyRequest(
+          `/shops/${shopId}/orders/shipping.json`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              line_items: lineItems,
+              address_to: addressTo
+            })
+          }
+        );
+
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok || !result || typeof result !== "object") {
+          console.error("Printify shipping quote failed:", response.status);
+          return json({
+            status: "error",
+            message: "Printify no pudo calcular el envío para este destino o producto."
+          }, 502);
+        }
+
+        return json({
+          status: "success",
+          currency: "USD",
+          shipping: result
+        });
+      } catch (error) {
+        console.error("Shipping quote error:", error.message);
+        return json({
+          status: "error",
+          message: "No se pudo calcular el envío."
+        }, 502);
+      }
+    }
+
     return json({ status: "error", message: "Ruta no encontrada." }, 404);
   },
 };
