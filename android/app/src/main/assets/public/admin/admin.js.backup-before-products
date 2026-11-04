@@ -1,0 +1,220 @@
+const OMNIA_API_BACKEND = "https://omnia-api.macisterodriguez16.workers.dev";
+
+const navItems = document.querySelectorAll(".nav-item");
+const sections = document.querySelectorAll(".admin-section");
+const pageTitle = document.getElementById("pageTitle");
+const sidebar = document.getElementById("sidebar");
+const menuToggle = document.getElementById("menuToggle");
+
+const sectionTitles = {
+    dashboard: "Dashboard",
+    products: "Productos",
+    orders: "Pedidos",
+    customers: "Clientes",
+    inventory: "Inventario",
+    payments: "Pagos",
+    channels: "Publicación / Canales",
+    integrations: "Integraciones",
+    settings: "Configuración"
+};
+
+function showSection(sectionName) {
+    navItems.forEach(item => {
+        item.classList.toggle(
+            "active",
+            item.dataset.section === sectionName
+        );
+    });
+
+    sections.forEach(section => {
+        section.classList.toggle(
+            "active",
+            section.id === `section-${sectionName}`
+        );
+    });
+
+    pageTitle.textContent = sectionTitles[sectionName] || "Dashboard";
+
+    sidebar.classList.remove("open");
+
+    history.replaceState(
+        null,
+        "",
+        `#${sectionName}`
+    );
+}
+
+navItems.forEach(item => {
+    item.addEventListener("click", () => {
+        showSection(item.dataset.section);
+    });
+});
+
+document.querySelectorAll("[data-section-action]").forEach(button => {
+    button.addEventListener("click", () => {
+        showSection(button.dataset.sectionAction);
+    });
+});
+
+menuToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("open");
+});
+
+async function loadDashboardStats() {
+    try {
+        const response = await fetch(
+            `${OMNIA_API_BACKEND}/api/catalog/omnia`
+        );
+
+        if (!response.ok) {
+            throw new Error("No se pudo cargar el catálogo.");
+        }
+
+        const data = await response.json();
+
+        const products =
+            data.productos ||
+            data.products ||
+            data.items ||
+            data.catalogo ||
+            [];
+
+        const count = Array.isArray(products)
+            ? products.length
+            : 0;
+
+        const statProducts =
+            document.getElementById("statProducts");
+
+        if (statProducts) {
+            statProducts.textContent = count;
+        }
+
+        renderRecentProducts(products);
+
+    } catch (error) {
+        console.error("OMNIA Dashboard:", error);
+
+        const statProducts =
+            document.getElementById("statProducts");
+
+        if (statProducts) {
+            statProducts.textContent = "—";
+        }
+
+        const recentProducts =
+            document.getElementById("recentProducts");
+
+        if (recentProducts) {
+            recentProducts.innerHTML = `
+                <div class="empty-icon">!</div>
+                <h4>Catálogo no disponible</h4>
+                <p>La conexión con OMNIA API será configurada en el siguiente paso.</p>
+            `;
+        }
+    }
+}
+
+function renderRecentProducts(products) {
+    const container =
+        document.getElementById("recentProducts");
+
+    if (!container) {
+        return;
+    }
+
+    if (!Array.isArray(products) || products.length === 0) {
+        container.innerHTML = `
+            <div class="empty-icon">▣</div>
+            <h4>No hay productos todavía</h4>
+            <p>Los productos publicados aparecerán aquí.</p>
+        `;
+
+        return;
+    }
+
+    const recent = products.slice(0, 5);
+
+    container.innerHTML = `
+        <div style="
+            width:100%;
+            margin-top:18px;
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        ">
+            ${recent.map(product => {
+                const title =
+                    product.title ||
+                    product.name ||
+                    "Producto OMNIA";
+
+                const price =
+                    product.price ??
+                    product.sale_price ??
+                    "";
+
+                return `
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:space-between;
+                        gap:15px;
+                        padding:12px 0;
+                        border-bottom:1px solid rgba(255,255,255,0.05);
+                    ">
+                        <div>
+                            <strong style="
+                                display:block;
+                                font-size:12px;
+                                font-weight:500;
+                            ">
+                                ${escapeHtml(title)}
+                            </strong>
+                            <span style="
+                                display:block;
+                                margin-top:4px;
+                                color:#777780;
+                                font-size:9px;
+                            ">
+                                Publicado en OMNIA Marketplace
+                            </span>
+                        </div>
+
+                        <span style="
+                            color:#d4af37;
+                            font-family:Georgia,serif;
+                            font-size:13px;
+                            white-space:nowrap;
+                        ">
+                            ${price !== "" ? "$" + price : "—"}
+                        </span>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function loadInitialSection() {
+    const hash =
+        window.location.hash.replace("#", "");
+
+    if (sectionTitles[hash]) {
+        showSection(hash);
+    } else {
+        showSection("dashboard");
+    }
+}
+
+loadInitialSection();
+loadDashboardStats();
