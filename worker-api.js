@@ -17,7 +17,7 @@ function getImageUrl(image) {
     ];
 
     const found = candidates.find(
-      (value) => typeof value === "string" && value.trim().length > 0
+      (value) => typeof value === "string" && value.trim().length > 0,
     );
     if (found) {
       rawUrl = found.trim();
@@ -128,7 +128,7 @@ export default {
         `SELECT printify_id, shop_id, title, description, status, payload_json, updated_at
          FROM printify_products
          WHERE printify_id = ?
-         LIMIT 1`
+         LIMIT 1`,
       )
         .bind(String(id))
         .first();
@@ -148,7 +148,7 @@ export default {
            description = excluded.description,
            status = excluded.status,
            payload_json = excluded.payload_json,
-           updated_at = CURRENT_TIMESTAMP`
+           updated_at = CURRENT_TIMESTAMP`,
       )
         .bind(
           String(product.id),
@@ -166,7 +166,7 @@ export default {
         `SELECT id, product_id, channel, enabled, status, external_product_id, published_at, created_at, updated_at
          FROM product_channels
          WHERE product_id = ?
-         ORDER BY channel ASC`
+         ORDER BY channel ASC`,
       )
         .bind(String(productId))
         .all();
@@ -175,16 +175,17 @@ export default {
 
     const getPublicProduct = async (id) => {
       return env.DB.prepare(
-        `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url
+        `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url, pos.settings_json AS omnia_settings_json
          FROM printify_products p
          INNER JOIN product_channels pc ON pc.product_id = p.printify_id
          LEFT JOIN product_display_settings pds ON pds.product_id = p.printify_id
          LEFT JOIN product_image_processing pip ON pip.product_id = p.printify_id
+         LEFT JOIN product_omnia_settings pos ON pos.product_id = p.printify_id
          WHERE p.printify_id = ?
            AND pc.channel = 'omnia'
            AND pc.enabled = 1
            AND pc.status = 'published'
-         LIMIT 1`
+         LIMIT 1`,
       )
         .bind(String(id))
         .first();
@@ -192,34 +193,68 @@ export default {
 
     const normalizePublicProduct = (product) => {
       const payload = parsePayload(product.payload_json);
-      const variants = Array.isArray(payload.variants) ? payload.variants : [];
+      let custom = {};
+      try {
+        const parsed = product.omnia_settings_json
+          ? JSON.parse(product.omnia_settings_json)
+          : {};
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+          custom = parsed;
+      } catch (_) {}
+
+      const variants = Array.isArray(custom.variants)
+        ? custom.variants
+        : Array.isArray(payload.variants)
+          ? payload.variants
+          : [];
+      const options = Array.isArray(custom.options)
+        ? custom.options
+        : Array.isArray(payload.options)
+          ? payload.options
+          : [];
       const availableVariants = variants.filter(
         (v) => v && v.is_enabled !== false && v.is_available !== false,
       );
       const selectedVariant = availableVariants[0] || variants[0] || null;
-
       const rawPrice =
         selectedVariant && selectedVariant.price != null
           ? Number(selectedVariant.price)
           : Number(payload.price || 0);
-
       const price = Number.isFinite(rawPrice) ? rawPrice / 100 : 0;
-      const images = Array.isArray(payload.images) ? payload.images : [];
-      const normalizedImages = normalizeMockupImages(images);
 
-      const selectedImage = normalizedImages.find(
-        (image) => image.src === product.main_image_url
-      );
+      const rawImages = Array.isArray(custom.images)
+        ? custom.images
+        : Array.isArray(payload.images)
+          ? payload.images
+          : [];
+      let normalizedImages = normalizeMockupImages(rawImages);
+      const coverImageUrl =
+        typeof custom.cover_image === "string" ? custom.cover_image.trim() : "";
+
+      if (
+        coverImageUrl &&
+        !normalizedImages.some((image) => image.src === coverImageUrl)
+      ) {
+        normalizedImages = [
+          { src: coverImageUrl, url: coverImageUrl, is_default: true },
+          ...normalizedImages,
+        ];
+      }
+
+      const selectedImage =
+        (coverImageUrl &&
+          normalizedImages.find((image) => image.src === coverImageUrl)) ||
+        normalizedImages.find((image) => image.src === product.main_image_url);
       const defaultImage =
         selectedImage ||
         normalizedImages.find((image) => image.is_default === true) ||
         normalizedImages[0] ||
         null;
-
       const mainImageUrl = defaultImage ? defaultImage.src : "";
       const processedImageUrl = product.processed_image_url || "";
-      const displayImageUrl = processedImageUrl || mainImageUrl;
-
+      const displayImageUrl = coverImageUrl
+        ? mainImageUrl
+        : processedImageUrl || mainImageUrl;
       const finalizedImages = normalizedImages.map((image) => ({
         ...image,
         is_default: image.src === mainImageUrl,
@@ -230,20 +265,30 @@ export default {
         id: product.printify_id,
         printify_id: product.printify_id,
         shop_id: product.shop_id,
-        title: product.title || payload.title || "",
-        description: product.description || payload.description || "",
+        title:
+          typeof custom.title === "string"
+            ? custom.title
+            : product.title || payload.title || "",
+        description:
+          typeof custom.description === "string"
+            ? custom.description
+            : product.description || payload.description || "",
+        category:
+          typeof custom.category === "string"
+            ? custom.category
+            : payload.category || "",
         status: product.status || payload.status || "",
         price,
         image: displayImageUrl,
         original_image: mainImageUrl,
         processed_image: processedImageUrl || null,
         images: finalizedImages,
-        options: Array.isArray(payload.options) ? payload.options : [],
+        variants,
+        options,
         updated_at: product.updated_at,
         is_published: true,
       };
     };
-
     const verifyPrintifySignature = async (rawBody, signature) => {
       if (!env.PRINTIFY_WEBHOOK_SECRET || !signature) return false;
       const key = await crypto.subtle.importKey(
@@ -431,13 +476,14 @@ export default {
     if (method === "GET" && path === "/api/catalog/omnia") {
       try {
         const { results } = await env.DB.prepare(
-          `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url
+          `SELECT p.printify_id, p.shop_id, p.title, p.description, p.status, p.payload_json, p.updated_at, pds.main_image_url, pip.processed_image_url, pos.settings_json AS omnia_settings_json
            FROM printify_products p
            INNER JOIN product_channels pc ON pc.product_id = p.printify_id
            LEFT JOIN product_display_settings pds ON pds.product_id = p.printify_id
            LEFT JOIN product_image_processing pip ON pip.product_id = p.printify_id
+         LEFT JOIN product_omnia_settings pos ON pos.product_id = p.printify_id
            WHERE pc.channel = 'omnia' AND pc.enabled = 1 AND pc.status = 'published'
-           ORDER BY p.updated_at DESC`
+           ORDER BY p.updated_at DESC`,
         ).all();
         const products = (results || []).map(normalizePublicProduct);
         return json({ status: "success", products });
@@ -475,7 +521,7 @@ export default {
         const { results } = await env.DB.prepare(
           `SELECT printify_id, shop_id, title, description, status, payload_json, updated_at
            FROM printify_products
-           ORDER BY updated_at DESC`
+           ORDER BY updated_at DESC`,
         ).all();
         const products = [];
         for (const product of results || []) {
@@ -579,9 +625,7 @@ export default {
       }
     }
 
-    const mockupMatch = path.match(
-      /^\/api\/admin\/products\/([^/]+)\/mockup$/
-    );
+    const mockupMatch = path.match(/^\/api\/admin\/products\/([^/]+)\/mockup$/);
 
     if (mockupMatch && ["GET", "PUT"].includes(method)) {
       const authError = requireAdmin(request);
@@ -589,33 +633,41 @@ export default {
 
       try {
         if (!env.DB) {
-          return json({
-            status: "error",
-            message: "La base de datos D1 no está configurada."
-          }, 500);
+          return json(
+            {
+              status: "error",
+              message: "La base de datos D1 no está configurada.",
+            },
+            500,
+          );
         }
 
         const id = decodeURIComponent(mockupMatch[1]);
         const product = await getProduct(id);
 
         if (!product) {
-          return json({
-            status: "error",
-            message: "Producto no encontrado."
-          }, 404);
+          return json(
+            {
+              status: "error",
+              message: "Producto no encontrado.",
+            },
+            404,
+          );
         }
 
         const payload = parsePayload(product.payload_json);
-        const rawImages = Array.isArray(payload.images)
-          ? payload.images
-          : [];
+        const rawImages = Array.isArray(payload.images) ? payload.images : [];
         const images = normalizeMockupImages(rawImages);
 
         if (!images.length) {
-          return json({
-            status: "error",
-            message: "No se encontraron maquetas válidas. Sincroniza este producto con Printify e inténtalo de nuevo."
-          }, 400);
+          return json(
+            {
+              status: "error",
+              message:
+                "No se encontraron maquetas válidas. Sincroniza este producto con Printify e inténtalo de nuevo.",
+            },
+            400,
+          );
         }
 
         if (method === "GET") {
@@ -623,8 +675,10 @@ export default {
             `SELECT main_image_url
              FROM product_display_settings
              WHERE product_id = ?
-             LIMIT 1`
-          ).bind(id).first();
+             LIMIT 1`,
+          )
+            .bind(id)
+            .first();
 
           const savedUrl = saved?.main_image_url || "";
           const mainImage =
@@ -638,8 +692,8 @@ export default {
             main_image_url: mainImage.src,
             images: images.map((image) => ({
               ...image,
-              is_default: image.src === mainImage.src
-            }))
+              is_default: image.src === mainImage.src,
+            })),
           });
         }
 
@@ -647,10 +701,13 @@ export default {
         try {
           body = await request.json();
         } catch {
-          return json({
-            status: "error",
-            message: "El cuerpo de la solicitud no contiene JSON válido."
-          }, 400);
+          return json(
+            {
+              status: "error",
+              message: "El cuerpo de la solicitud no contiene JSON válido.",
+            },
+            400,
+          );
         }
 
         const mainImageUrl =
@@ -659,21 +716,27 @@ export default {
             : "";
 
         if (!mainImageUrl) {
-          return json({
-            status: "error",
-            message: "Selecciona una imagen principal."
-          }, 400);
+          return json(
+            {
+              status: "error",
+              message: "Selecciona una imagen principal.",
+            },
+            400,
+          );
         }
 
         const selectedImage = images.find(
-          (image) => image.src === mainImageUrl
+          (image) => image.src === mainImageUrl,
         );
 
         if (!selectedImage) {
-          return json({
-            status: "error",
-            message: "La imagen seleccionada no pertenece a este producto."
-          }, 400);
+          return json(
+            {
+              status: "error",
+              message: "La imagen seleccionada no pertenece a este producto.",
+            },
+            400,
+          );
         }
 
         await env.DB.prepare(
@@ -682,21 +745,182 @@ export default {
            VALUES (?, ?, CURRENT_TIMESTAMP)
            ON CONFLICT(product_id) DO UPDATE SET
              main_image_url = excluded.main_image_url,
-             updated_at = CURRENT_TIMESTAMP`
-        ).bind(id, selectedImage.src).run();
+             updated_at = CURRENT_TIMESTAMP`,
+        )
+          .bind(id, selectedImage.src)
+          .run();
 
         return json({
           status: "success",
           message: "Imagen principal de maqueta guardada correctamente.",
           product_id: id,
-          main_image_url: selectedImage.src
+          main_image_url: selectedImage.src,
         });
       } catch (error) {
+        return json(
+          {
+            status: "error",
+            message: "No se pudo procesar el selector de maquetas.",
+            detail: String(error?.message || error),
+          },
+          500,
+        );
+      }
+    }
+
+    const omniaSettingsMatch = path.match(
+      /^\/api\/admin\/products\/([^/]+)\/omnia-settings$/,
+    );
+    if (omniaSettingsMatch && (method === "GET" || method === "PUT")) {
+      const authError = requireAdmin(request);
+      if (authError) return authError;
+      if (!env.DB)
+        return json(
+          { status: "error", message: "Base de datos no disponible." },
+          500,
+        );
+      try {
+        const id = decodeURIComponent(omniaSettingsMatch[1]);
+        if (!(await getProduct(id)))
+          return json(
+            { status: "error", message: "Producto no encontrado." },
+            404,
+          );
+        if (method === "GET") {
+          const row = await env.DB.prepare(
+            "SELECT settings_json, updated_at FROM product_omnia_settings WHERE product_id = ?",
+          )
+            .bind(id)
+            .first();
+          let settings = {};
+          if (row?.settings_json) settings = JSON.parse(row.settings_json);
+          return json({
+            status: "success",
+            product_id: id,
+            settings,
+            updated_at: row?.updated_at || null,
+          });
+        }
+        const body = await request.json();
+        const settings = body?.settings;
+        const allowed = [
+          "title",
+          "description",
+          "category",
+          "images",
+          "cover_image",
+          "variants",
+          "options",
+        ];
+        if (
+          !settings ||
+          typeof settings !== "object" ||
+          Array.isArray(settings) ||
+          Object.keys(settings).some((k) => !allowed.includes(k))
+        ) {
+          return json(
+            {
+              status: "error",
+              message:
+                "Configuración no válida o contiene campos no permitidos.",
+            },
+            400,
+          );
+        }
+        for (const [key, maxLength] of [
+          ["title", 5000],
+          ["description", 50000],
+          ["category", 500],
+        ]) {
+          if (
+            settings[key] !== undefined &&
+            typeof settings[key] !== "string"
+          ) {
+            return json(
+              { status: "error", message: key + " debe ser texto." },
+              400,
+            );
+          }
+          if (
+            typeof settings[key] === "string" &&
+            settings[key].length > maxLength
+          ) {
+            return json(
+              {
+                status: "error",
+                message: key + " supera la longitud permitida.",
+              },
+              400,
+            );
+          }
+        }
+
+        if (
+          settings.cover_image !== undefined &&
+          typeof settings.cover_image !== "string"
+        ) {
+          return json(
+            { status: "error", message: "cover_image debe ser texto." },
+            400,
+          );
+        }
+        if (
+          typeof settings.cover_image === "string" &&
+          settings.cover_image.length > 5000
+        ) {
+          return json(
+            {
+              status: "error",
+              message: "La URL de portada supera la longitud permitida.",
+            },
+            400,
+          );
+        }
+
+        const arrayLimits = { images: 100, variants: 500, options: 100 };
+        for (const [key, maxItems] of Object.entries(arrayLimits)) {
+          if (settings[key] !== undefined && !Array.isArray(settings[key])) {
+            return json(
+              { status: "error", message: key + " debe ser una lista." },
+              400,
+            );
+          }
+          if (Array.isArray(settings[key]) && settings[key].length > maxItems) {
+            return json(
+              {
+                status: "error",
+                message: key + " supera la cantidad permitida.",
+              },
+              400,
+            );
+          }
+        }
+
+        const saved = JSON.stringify(settings);
+        if (saved.length > 200000)
+          return json(
+            { status: "error", message: "Configuración demasiado grande." },
+            400,
+          );
+        await env.DB.prepare(
+          "INSERT INTO product_omnia_settings (product_id, settings_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(product_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = CURRENT_TIMESTAMP",
+        )
+          .bind(id, saved)
+          .run();
         return json({
-          status: "error",
-          message: "No se pudo procesar el selector de maquetas.",
-          detail: String(error?.message || error)
-        }, 500);
+          status: "success",
+          message: "Configuración de OMNIA guardada correctamente.",
+          product_id: id,
+        });
+      } catch (error) {
+        return json(
+          {
+            status: "error",
+            message: "No se pudo procesar la configuración de OMNIA.",
+            detail: String(error?.message || error),
+          },
+          500,
+        );
       }
     }
 
@@ -741,7 +965,9 @@ export default {
         const imageUrl = String(body.image_url || "").trim();
 
         const payload = parsePayload(product.payload_json);
-        const images = normalizeMockupImages(payload.images).map((img) => img.src);
+        const images = normalizeMockupImages(payload.images).map(
+          (img) => img.src,
+        );
 
         if (!imageUrl || !images.includes(imageUrl)) {
           return json(
@@ -909,7 +1135,7 @@ export default {
            ON CONFLICT(product_id) DO UPDATE SET
              original_image_url = excluded.original_image_url,
              processed_image_url = excluded.processed_image_url,
-             updated_at = CURRENT_TIMESTAMP`
+             updated_at = CURRENT_TIMESTAMP`,
         )
           .bind(id, imageUrl, cloudinaryData.secure_url)
           .run();
@@ -932,9 +1158,7 @@ export default {
       }
     }
 
-        const productDeleteMatch = path.match(
-      /^\/api\/admin\/products\/([^/]+)$/
-    );
+    const productDeleteMatch = path.match(/^\/api\/admin\/products\/([^/]+)$/);
 
     if (method === "DELETE" && productDeleteMatch) {
       const authError = requireAdmin(request);
@@ -947,37 +1171,44 @@ export default {
         if (!product) {
           return json(
             { status: "error", message: "Producto no encontrado." },
-            404
+            404,
           );
         }
 
         // Eliminar datos locales relacionados, sin tocar Printify.
         await env.DB.batch([
           env.DB.prepare(
-            "DELETE FROM product_image_processing WHERE product_id = ?"
+            "DELETE FROM product_omnia_settings WHERE product_id = ?",
           ).bind(id),
           env.DB.prepare(
-            "DELETE FROM product_display_settings WHERE product_id = ?"
+            "DELETE FROM product_image_processing WHERE product_id = ?",
           ).bind(id),
           env.DB.prepare(
-            "DELETE FROM product_channels WHERE product_id = ?"
+            "DELETE FROM product_display_settings WHERE product_id = ?",
           ).bind(id),
           env.DB.prepare(
-            "DELETE FROM printify_products WHERE printify_id = ?"
-          ).bind(id)
+            "DELETE FROM product_channels WHERE product_id = ?",
+          ).bind(id),
+          env.DB.prepare(
+            "DELETE FROM printify_products WHERE printify_id = ?",
+          ).bind(id),
         ]);
 
         return json({
           status: "success",
-          message: "Producto eliminado del registro local de OMNIA. El producto original de Printify no se modificó.",
-          printify_id: id
+          message:
+            "Producto eliminado del registro local de OMNIA. El producto original de Printify no se modificó.",
+          printify_id: id,
         });
       } catch (error) {
-        return json({
-          status: "error",
-          message: "No se pudo eliminar el producto del registro local.",
-          detail: String(error?.message || error)
-        }, 500);
+        return json(
+          {
+            status: "error",
+            message: "No se pudo eliminar el producto del registro local.",
+            detail: String(error?.message || error),
+          },
+          500,
+        );
       }
     }
 
@@ -1027,7 +1258,7 @@ export default {
         }
 
         await env.DB.prepare(
-          `UPDATE printify_products SET title = ?, description = ?, payload_json = ?, updated_at = CURRENT_TIMESTAMP WHERE printify_id = ?`
+          `UPDATE printify_products SET title = ?, description = ?, payload_json = ?, updated_at = CURRENT_TIMESTAMP WHERE printify_id = ?`,
         )
           .bind(title, description, JSON.stringify(payload), id)
           .run();
@@ -1071,7 +1302,7 @@ export default {
              enabled = excluded.enabled,
              status = excluded.status,
              published_at = CASE WHEN excluded.status = 'published' THEN CURRENT_TIMESTAMP ELSE product_channels.published_at END,
-             updated_at = CURRENT_TIMESTAMP`
+             updated_at = CURRENT_TIMESTAMP`,
         )
           .bind(id, channel, enabled, status, status)
           .run();
@@ -1099,7 +1330,7 @@ export default {
           .trim()
           .toLowerCase();
         await env.DB.prepare(
-          `DELETE FROM product_channels WHERE product_id = ? AND channel = ?`
+          `DELETE FROM product_channels WHERE product_id = ? AND channel = ?`,
         )
           .bind(id, channel)
           .run();
@@ -1158,6 +1389,468 @@ export default {
         status: "manual_setup_required",
         webhook_url: `${url.origin}/api/webhooks/printify`,
       });
+    }
+
+    // PayPal: crear pedidos con precios calculados en el servidor.
+    if (method === "POST" && path === "/api/payments/paypal/create-order") {
+      let localOrderId = null;
+      try {
+        if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+          return json({ status: "error", message: "PayPal no está configurado." }, 503);
+        }
+
+        const body = await parsePayload(await request.text());
+        if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) {
+          return json({ status: "error", message: "Artículos inválidos." }, 400);
+        }
+
+        const validated = [];
+        let totalCents = 0;
+
+        for (const item of body.items) {
+          const productId = String(item.printify_product_id || "");
+          const variantId = String(item.variant_id || "");
+          const quantity = Number(item.quantity);
+
+          if (!productId || !variantId || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+            return json({ status: "error", message: "Artículo o cantidad inválidos." }, 400);
+          }
+
+          const product = await getPublicProduct(productId);
+          if (!product) {
+            return json({ status: "error", message: "Un producto ya no está disponible." }, 400);
+          }
+
+          const normalized = normalizePublicProduct(product);
+          const variants = Array.isArray(normalized.variants) ? normalized.variants : [];
+          const variant = variants.find(v =>
+            v && String(v.id) === variantId &&
+            v.is_enabled !== false && v.is_available !== false
+          );
+
+          const priceCents = Number(variant && variant.price);
+          if (!variant || !Number.isSafeInteger(priceCents) || priceCents <= 0) {
+            return json({ status: "error", message: "Variante o precio inválido." }, 400);
+          }
+
+          const lineCents = priceCents * quantity;
+          if (!Number.isSafeInteger(lineCents) || !Number.isSafeInteger(totalCents + lineCents)) {
+            return json({ status: "error", message: "Importe fuera de rango." }, 400);
+          }
+
+          totalCents += lineCents;
+          validated.push({
+            productId,
+            variantId,
+            title: String(normalized.title || "Producto OMNIA").slice(0, 250),
+            quantity,
+            priceCents,
+            lineCents
+          });
+        }
+
+        if (totalCents <= 0) {
+          return json({ status: "error", message: "Importe inválido." }, 400);
+        }
+
+        localOrderId = crypto.randomUUID();
+        await env.DB.prepare(
+          `INSERT INTO orders
+           (id, status, currency, subtotal_cents, total_cents, payment_provider,
+            payment_status, fulfillment_status, created_at, updated_at)
+           VALUES (?, 'pending', 'USD', ?, ?, 'paypal', 'pending', 'pending',
+                   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        ).bind(localOrderId, totalCents, totalCents).run();
+
+        for (const item of validated) {
+          await env.DB.prepare(
+            `INSERT INTO order_items
+             (order_id, product_id, printify_product_id, variant_id, product_title,
+              quantity, unit_price_cents, line_total_cents, fulfillment_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+          ).bind(
+            localOrderId, item.productId, item.productId, item.variantId,
+            item.title, item.quantity, item.priceCents, item.lineCents
+          ).run();
+        }
+
+        const credentials = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+        const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: "grant_type=client_credentials"
+        });
+
+        if (!tokenResponse.ok) throw new Error("PayPal OAuth failed");
+        const tokenData = await tokenResponse.json();
+
+        const paypalResponse = await fetch("https://api-m.paypal.com/v2/checkout/orders", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            "Content-Type": "application/json",
+            "PayPal-Request-Id": localOrderId
+          },
+          body: JSON.stringify({
+            intent: "CAPTURE",
+            purchase_units: [{
+              custom_id: localOrderId,
+              invoice_id: localOrderId,
+              amount: {
+                currency_code: "USD",
+                value: (totalCents / 100).toFixed(2)
+              }
+            }]
+          })
+        });
+
+        const paypalData = await paypalResponse.json();
+        if (!paypalResponse.ok || !paypalData.id) {
+          throw new Error("PayPal order creation failed");
+        }
+
+        const savePayPalOrder = await env.DB.prepare(
+          `UPDATE orders SET paypal_order_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        ).bind(paypalData.id, localOrderId).run();
+
+        if (savePayPalOrder.meta?.changes !== 1) {
+          throw new Error("Could not persist PayPal order ID");
+        }
+
+        return json({
+          status: "success",
+          orderID: paypalData.id,
+          localOrderId
+        });
+      } catch (error) {
+        console.error("PayPal create-order error:", error.message);
+        if (localOrderId) {
+          try {
+            await env.DB.prepare(
+              `UPDATE orders
+               SET status = 'payment_failed', payment_status = 'failed',
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ? AND payment_status = 'pending'`
+            ).bind(localOrderId).run();
+          } catch (cleanupError) {
+            console.error("PayPal order cleanup error:", cleanupError.message);
+          }
+        }
+        return json({
+          status: "error",
+          message: "No se pudo crear el pedido. Comprueba la configuración y vuelve a intentarlo."
+        }, 502);
+      }
+    }
+
+    // PayPal: capturar y verificar el importe antes de marcar el pedido como pagado.
+    if (method === "POST" && path === "/api/payments/paypal/capture-order") {
+      try {
+        if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+          return json({ status: "error", message: "PayPal no está configurado." }, 503);
+        }
+
+        const body = await parsePayload(await request.text());
+        const localOrderId = String(body.localOrderId || "");
+        const paypalOrderId = String(body.orderID || "");
+
+        if (!localOrderId || !paypalOrderId) {
+          return json({ status: "error", message: "Faltan los datos del pedido." }, 400);
+        }
+
+        const order = await env.DB.prepare(
+          `SELECT id, paypal_order_id, status, payment_status, total_cents
+           FROM orders WHERE id = ? LIMIT 1`
+        ).bind(localOrderId).first();
+
+        if (!order || order.paypal_order_id !== paypalOrderId) {
+          return json({ status: "error", message: "Pedido no válido." }, 400);
+        }
+
+        if (order.payment_status === "captured" && order.status === "paid") {
+          return json({ status: "success", paid: true, localOrderId, alreadyCaptured: true });
+        }
+
+        const credentials = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+        const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: "grant_type=client_credentials"
+        });
+
+        if (!tokenResponse.ok) throw new Error("PayPal OAuth failed");
+        const tokenData = await tokenResponse.json();
+
+        const captureResponse = await fetch(
+          `https://api-m.paypal.com/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}/capture`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${tokenData.access_token}`,
+              "Content-Type": "application/json",
+              "PayPal-Request-Id": `capture-${localOrderId}`
+            },
+            body: "{}"
+          }
+        );
+
+        let captureData = await captureResponse.json();
+
+        // Si la captura respondió con error o la respuesta fue ambigua,
+        // consultar PayPal antes de declarar que el pago falló.
+        if (!captureResponse.ok || captureData.status !== "COMPLETED") {
+          const verifyResponse = await fetch(
+            `https://api-m.paypal.com/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${tokenData.access_token}`,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+
+          if (verifyResponse.ok) {
+            const verifiedOrder = await verifyResponse.json();
+            if (verifiedOrder.status === "COMPLETED") {
+              captureData = verifiedOrder;
+            } else {
+              return json({
+                status: "error",
+                message: "PayPal aún no confirma el pago. Verifica el estado antes de reintentar."
+              }, 409);
+            }
+          } else {
+            return json({
+              status: "error",
+              message: "No se pudo verificar el estado del pago. Comprueba PayPal antes de reintentar."
+            }, 502);
+          }
+        }
+
+        const purchaseUnit = (captureData.purchase_units || []).find(
+          unit => unit.custom_id === localOrderId || unit.invoice_id === localOrderId
+        );
+        const capture = purchaseUnit &&
+          purchaseUnit.payments &&
+          (purchaseUnit.payments.captures || []).find(c => c.status === "COMPLETED");
+
+        if (
+          !purchaseUnit || !capture || !capture.amount ||
+          capture.amount.currency_code !== "USD" ||
+          Math.round(Number(capture.amount.value) * 100) !== Number(order.total_cents)
+        ) {
+          return json({
+            status: "error",
+            message: "No se pudo verificar el importe capturado. El pedido requiere revisión."
+          }, 409);
+        }
+
+        const captureId = String(capture.id || paypalOrderId);
+        const payerName = [
+          captureData.payer && captureData.payer.name && captureData.payer.name.given_name,
+          captureData.payer && captureData.payer.name && captureData.payer.name.surname
+        ].filter(Boolean).join(" ").slice(0, 250);
+        const payerEmail = String(
+          captureData.payer && captureData.payer.email_address || ""
+        ).slice(0, 250);
+
+        const markPaidResult = await env.DB.prepare(
+          `UPDATE orders
+           SET status = 'paid', payment_status = 'captured',
+               payer_name = ?, payer_email = ?, paid_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND paypal_order_id = ?
+             AND payment_status != 'captured'`
+        ).bind(payerName, payerEmail, localOrderId, paypalOrderId).run();
+
+        if (markPaidResult.meta?.changes !== 1) {
+          const latestOrder = await env.DB.prepare(
+            `SELECT status, payment_status, paypal_order_id
+             FROM orders WHERE id = ?`
+          ).bind(localOrderId).first();
+
+          if (
+            !latestOrder ||
+            latestOrder.paypal_order_id !== paypalOrderId ||
+            latestOrder.status !== "paid" ||
+            latestOrder.payment_status !== "captured"
+          ) {
+            return json({
+              status: "error",
+              message: "No se pudo verificar el registro del pago. Comprueba PayPal antes de reintentar."
+            }, 409);
+          }
+        }
+
+        const eventResult = await env.DB.prepare(
+          `INSERT OR IGNORE INTO payment_events
+           (order_id, provider, provider_event_id, event_type, payload_json)
+           VALUES (?, 'paypal', ?, 'PAYMENT.CAPTURE.COMPLETED', ?)`
+        ).bind(localOrderId, captureId, JSON.stringify({
+          paypal_order_id: paypalOrderId,
+          capture_id: captureId,
+          amount: capture.amount
+        })).run();
+
+        if (eventResult.meta?.changes !== 1) {
+          const existingEvent = await env.DB.prepare(
+            `SELECT order_id FROM payment_events
+             WHERE provider = 'paypal' AND provider_event_id = ?
+             LIMIT 1`
+          ).bind(captureId).first();
+
+          if (!existingEvent || existingEvent.order_id !== localOrderId) {
+            console.error("PayPal capture event was not recorded:", localOrderId);
+            return json({
+              status: "error",
+              paid: true,
+              message: "El pago fue confirmado, pero su registro requiere revisión. No vuelvas a pagar."
+            }, 500);
+          }
+        }
+
+        return json({ status: "success", paid: true, localOrderId });
+      } catch (error) {
+        console.error("PayPal capture error:", error.message);
+        return json({
+          status: "error",
+          message: "No se pudo confirmar el pago. Verifica el estado en PayPal antes de reintentar."
+        }, 502);
+      }
+    }
+
+
+    if (method === "POST" && path === "/api/shipping/quote") {
+      try {
+        const body = await request.json();
+        const items = body.items;
+        const destination = body.address_to || {};
+
+        if (!Array.isArray(items) || items.length < 1 || items.length > 20) {
+          return json({ status: "error", message: "Artículos inválidos." }, 400);
+        }
+
+        const requiredAddress = [
+          "first_name", "last_name", "country", "address1", "city"
+        ];
+
+        for (const field of requiredAddress) {
+          if (typeof destination[field] !== "string" || !destination[field].trim()) {
+            return json({ status: "error", message: "Falta un dato obligatorio de la dirección: " + field }, 400);
+          }
+        }
+
+        const addressTo = {};
+        for (const field of [
+          "first_name", "last_name", "email", "phone", "country",
+          "region", "address1", "address2", "city", "zip"
+        ]) {
+          const value = String(destination[field] || "").trim();
+          if (value.length > 250) {
+            return json({ status: "error", message: "Dato de dirección demasiado largo." }, 400);
+          }
+          if (value) addressTo[field] = value;
+        }
+
+        addressTo.country = addressTo.country.toUpperCase();
+        if (!/^[A-Z]{2}$/.test(addressTo.country)) {
+          return json({ status: "error", message: "Código de país inválido." }, 400);
+        }
+
+        const lineItems = [];
+        let shopId = "";
+
+        for (const item of items) {
+          const productId = String(item.printify_product_id || item.product_id || "");
+          const variantId = String(item.variant_id || "");
+          const quantity = Number(item.quantity);
+
+          if (
+            !productId ||
+            !/^\d+$/.test(variantId) ||
+            !Number.isInteger(quantity) ||
+            quantity < 1 ||
+            quantity > 20
+          ) {
+            return json({ status: "error", message: "Artículo, variante o cantidad inválidos." }, 400);
+          }
+
+          const product = await getPublicProduct(productId);
+          if (!product) {
+            return json({ status: "error", message: "Un producto no está publicado o disponible en OMNIA." }, 400);
+          }
+
+          const normalized = normalizePublicProduct(product);
+          const variants = Array.isArray(normalized.variants) ? normalized.variants : [];
+          const variant = variants.find(v =>
+            v && String(v.id) === variantId &&
+            v.is_enabled !== false && v.is_available !== false
+          );
+
+          if (!variant) {
+            return json({ status: "error", message: "Una variante no está disponible." }, 400);
+          }
+
+          const currentShopId = /^\d+$/.test(String(product.shop_id || ""))
+            ? String(product.shop_id)
+            : String(env.PRINTIFY_SHOP_ID || "");
+
+          if (!/^\d+$/.test(currentShopId)) {
+            return json({ status: "error", message: "No se pudo identificar la tienda de Printify." }, 500);
+          }
+
+          if (shopId && shopId !== currentShopId) {
+            return json({ status: "error", message: "Todos los productos deben pertenecer a la misma tienda." }, 400);
+          }
+
+          shopId = currentShopId;
+          lineItems.push({
+            product_id: product.printify_id,
+            variant_id: Number(variantId),
+            quantity
+          });
+        }
+
+        const response = await printifyRequest(
+          `/shops/${shopId}/orders/shipping.json`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              line_items: lineItems,
+              address_to: addressTo
+            })
+          }
+        );
+
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok || !result || typeof result !== "object") {
+          console.error("Printify shipping quote failed:", response.status);
+          return json({
+            status: "error",
+            message: "Printify no pudo calcular el envío para este destino o producto."
+          }, 502);
+        }
+
+        return json({
+          status: "success",
+          currency: "USD",
+          shipping: result
+        });
+      } catch (error) {
+        console.error("Shipping quote error:", error.message);
+        return json({
+          status: "error",
+          message: "No se pudo calcular el envío."
+        }, 502);
+      }
     }
 
     return json({ status: "error", message: "Ruta no encontrada." }, 404);

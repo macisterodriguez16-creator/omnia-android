@@ -142,8 +142,7 @@
       address.country &&
       /^[A-Z]{2}$/.test(address.country) &&
       address.address1 &&
-      address.city &&
-      address.zip
+      address.city
     );
   }
 
