@@ -135,32 +135,96 @@ export default {
     };
 
     const saveProduct = async (product, shopId) => {
-      if (!product || !product.id) {
-        throw new Error("El producto no contiene un ID válido.");
-      }
-      await env.DB.prepare(
-        `INSERT INTO printify_products (printify_id, shop_id, title, description, status, payload_json, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(printify_id)
-         DO UPDATE SET
-           shop_id = excluded.shop_id,
-           title = excluded.title,
-           description = excluded.description,
-           status = excluded.status,
-           payload_json = excluded.payload_json,
-           updated_at = CURRENT_TIMESTAMP`,
-      )
-        .bind(
-          String(product.id),
-          String(shopId || env.PRINTIFY_SHOP_ID || "manual"),
-          product.title || "",
-          product.description || "",
-          product.status || "draft",
-          JSON.stringify(product),
-        )
-        .run();
-    };
+  if (
+    !product ||
+    typeof product !== "object" ||
+    Array.isArray(product) ||
+    typeof product.id !== "string" ||
+    !product.id.trim()
+  ) {
+    throw new Error("El producto no contiene un ID válido.");
+  }
 
+  const productId = product.id.trim();
+  const normalizedShopId = String(
+    shopId || env.PRINTIFY_SHOP_ID || "manual",
+  );
+  const isManual = product.origin === "manual";
+
+  if (
+    (isManual && normalizedShopId !== "manual") ||
+    (!isManual && normalizedShopId === "manual")
+  ) {
+    throw new Error("El origen del producto no coincide con su tienda.");
+  }
+
+  if (
+    typeof product.title !== "string" ||
+    !product.title.trim() ||
+    !Array.isArray(product.variants) ||
+    (product.images !== undefined && !Array.isArray(product.images))
+  ) {
+    throw new Error(
+      "El producto no tiene un título o una estructura válida de variantes e imágenes.",
+    );
+  }
+
+  const existing = await getProduct(productId);
+
+  if (existing) {
+    let existingPayload;
+
+    try {
+      existingPayload = JSON.parse(existing.payload_json || "");
+    } catch {
+      throw new Error(
+        "El producto existente tiene datos ilegibles. No se sobrescribió.",
+      );
+    }
+
+    if (
+      !existingPayload ||
+      typeof existingPayload !== "object" ||
+      Array.isArray(existingPayload)
+    ) {
+      throw new Error(
+        "El producto existente tiene una estructura inválida. No se sobrescribió.",
+      );
+    }
+
+    const existingIsManual =
+      existing.shop_id === "manual" ||
+      existingPayload.origin === "manual";
+
+    if (existingIsManual !== isManual) {
+      throw new Error(
+        "Se bloqueó el guardado para evitar sobrescribir un producto de otro origen.",
+      );
+    }
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO printify_products (printify_id, shop_id, title, description, status, payload_json, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(printify_id)
+     DO UPDATE SET
+       shop_id = excluded.shop_id,
+       title = excluded.title,
+       description = excluded.description,
+       status = excluded.status,
+       payload_json = excluded.payload_json,
+       updated_at = CURRENT_TIMESTAMP`,
+  )
+    .bind(
+      productId,
+      normalizedShopId,
+      product.title.trim(),
+      product.description || "",
+      product.status || "draft",
+      JSON.stringify(product),
+    )
+    .run();
+};
     const listChannels = async (productId) => {
       const result = await env.DB.prepare(
         `SELECT id, product_id, channel, enabled, status, external_product_id, published_at, created_at, updated_at
@@ -402,6 +466,9 @@ export default {
           );
         }
         const product = await response.json();
+        if (!product || typeof product !== "object" || Array.isArray(product) || String(product.id) !== String(id)) {
+          return json({ status: "error", message: "El detalle recibido no corresponde al producto solicitado." }, 502);
+        }
         await saveProduct(product, env.PRINTIFY_SHOP_ID);
         return json({
           status: "success",
@@ -428,7 +495,10 @@ export default {
         }
         let page = 1,
           total = 0,
+          failed = 0,
           pages = 0;
+        const failedProducts = [];
+        let failedProductsTruncated = false;
         while (page <= 100) {
           const response = await printifyRequest(
             `/shops/${env.PRINTIFY_SHOP_ID}/products.json?page=${page}`,
@@ -454,8 +524,44 @@ export default {
           if (!products.length) break;
           for (const product of products) {
             if (!product || !product.id) continue;
-            await saveProduct(product, env.PRINTIFY_SHOP_ID);
-            total++;
+
+            try {
+              const detailResponse = await printifyRequest(
+                `/shops/${env.PRINTIFY_SHOP_ID}/products/${encodeURIComponent(String(product.id))}.json`,
+              );
+
+              if (!detailResponse.ok) {
+                const detail = await detailResponse.text();
+                throw new Error(
+                  `Printify respondió ${detailResponse.status}: ${detail.slice(0, 300)}`,
+                );
+              }
+
+              const fullProduct = await detailResponse.json();
+
+              if (
+                !fullProduct ||
+                typeof fullProduct !== "object" ||
+                Array.isArray(fullProduct) ||
+                String(fullProduct.id) !== String(product.id)
+              ) {
+                throw new Error("El detalle recibido no corresponde al producto solicitado.");
+              }
+
+              await saveProduct(fullProduct, env.PRINTIFY_SHOP_ID);
+              total++;
+            } catch (error) {
+              failed++;
+
+              if (failedProducts.length < 50) {
+                failedProducts.push({
+                  product_id: String(product.id),
+                  message: String(error?.message || error).slice(0, 500),
+                });
+              } else {
+                failedProductsTruncated = true;
+              }
+            }
           }
           pages++;
           if (data.last_page && page >= Number(data.last_page)) break;
@@ -463,11 +569,17 @@ export default {
           page++;
         }
         return json({
-          status: "success",
-          message: "Sincronización de Printify finalizada.",
-          products_synced: total,
-          pages,
-        });
+            status: failed > 0 ? "partial" : "success",
+            message:
+              failed > 0
+                ? "Sincronización finalizada con algunos productos pendientes."
+                : "Sincronización de Printify finalizada.",
+            products_synced: total,
+            products_failed: failed,
+            failed_products: failedProducts,
+            failed_products_truncated: failedProductsTruncated,
+            pages,
+          });
       } catch (error) {
         return json({ status: "error", message: error.message }, 500);
       }
@@ -781,7 +893,8 @@ export default {
         );
       try {
         const id = decodeURIComponent(omniaSettingsMatch[1]);
-        if (!(await getProduct(id)))
+        const product = await getProduct(id);
+        if (!product)
           return json(
             { status: "error", message: "Producto no encontrado." },
             404,
@@ -801,16 +914,54 @@ export default {
             updated_at: row?.updated_at || null,
           });
         }
+
+        const previousRow = await env.DB.prepare(
+          "SELECT settings_json FROM product_omnia_settings WHERE product_id = ?",
+        )
+          .bind(id)
+          .first();
+
+        let previousSettings = {};
+        if (previousRow?.settings_json) {
+          try {
+            previousSettings = JSON.parse(previousRow.settings_json);
+          } catch {
+            return json(
+              {
+                status: "error",
+                message: "La configuración existente es ilegible. No se sobrescribió.",
+              },
+              409,
+            );
+          }
+          if (
+            !previousSettings ||
+            typeof previousSettings !== "object" ||
+            Array.isArray(previousSettings)
+          ) {
+            return json(
+              {
+                status: "error",
+                message: "La configuración existente tiene una estructura inválida.",
+              },
+              409,
+            );
+          }
+        }
+
         const body = await request.json();
         const settings = body?.settings;
         const allowed = [
           "title",
           "description",
           "category",
+          "sku",
+          "price",
           "images",
           "cover_image",
           "variants",
           "options",
+          "variant_prices",
         ];
         if (
           !settings ||
@@ -831,6 +982,8 @@ export default {
           ["title", 5000],
           ["description", 50000],
           ["category", 500],
+          ["sku", 500],
+          ["price", 100],
         ]) {
           if (
             settings[key] !== undefined &&
@@ -896,7 +1049,131 @@ export default {
           }
         }
 
-        const saved = JSON.stringify(settings);
+        const savedSettings = {
+          ...previousSettings,
+          ...settings,
+        };
+
+        if (settings.variant_prices !== undefined) {
+          let originalPayload;
+          try {
+            originalPayload = JSON.parse(product.payload_json || "");
+          } catch {
+            return json(
+              {
+                status: "error",
+                message: "Los datos originales del producto son ilegibles. No se guardaron precios.",
+              },
+              409,
+            );
+          }
+
+          if (
+            !originalPayload ||
+            typeof originalPayload !== "object" ||
+            Array.isArray(originalPayload) ||
+            !Array.isArray(originalPayload.variants)
+          ) {
+            return json(
+              {
+                status: "error",
+                message: "Las variantes originales del producto no tienen una estructura válida.",
+              },
+              409,
+            );
+          }
+
+          if (originalPayload.origin === "manual") {
+            return json(
+              {
+                status: "error",
+                message: "Los productos manuales conservan su mecanismo independiente de precios.",
+              },
+              400,
+            );
+          }
+
+          const incomingPrices = settings.variant_prices;
+          const previousPrices = previousSettings.variant_prices || {};
+
+          if (
+            !incomingPrices ||
+            typeof incomingPrices !== "object" ||
+            Array.isArray(incomingPrices) ||
+            Object.keys(incomingPrices).length > 500 ||
+            !previousPrices ||
+            typeof previousPrices !== "object" ||
+            Array.isArray(previousPrices)
+          ) {
+            return json(
+              {
+                status: "error",
+                message: "variant_prices debe ser un objeto válido de hasta 500 variantes.",
+              },
+              400,
+            );
+          }
+
+          const originalVariantIds = new Set(
+            originalPayload.variants
+              .filter((variant) => variant && variant.id !== undefined && variant.id !== null)
+              .map((variant) => String(variant.id)),
+          );
+
+          for (const [variantId, priceData] of Object.entries(incomingPrices)) {
+            if (
+              !variantId.trim() ||
+              (!originalVariantIds.has(variantId) &&
+                !Object.prototype.hasOwnProperty.call(previousPrices, variantId))
+            ) {
+              return json(
+                {
+                  status: "error",
+                  message: "El identificador de variante no pertenece al producto ni existe previamente.",
+                  variant_id: variantId,
+                },
+                400,
+              );
+            }
+
+            if (priceData === null) continue;
+
+            if (
+              !priceData ||
+              typeof priceData !== "object" ||
+              Array.isArray(priceData) ||
+              Object.keys(priceData).some(
+                (key) => !["price", "currency"].includes(key),
+              ) ||
+              !Number.isFinite(priceData.price) ||
+              priceData.price < 0 ||
+              priceData.currency !== "USD"
+            ) {
+              return json(
+                {
+                  status: "error",
+                  message: "Cada precio debe ser un importe numérico no negativo en USD.",
+                  variant_id: variantId,
+                },
+                400,
+              );
+            }
+          }
+
+          const mergedPrices = { ...previousPrices };
+
+          for (const [variantId, priceData] of Object.entries(incomingPrices)) {
+            if (priceData === null) {
+              delete mergedPrices[variantId];
+            } else {
+              mergedPrices[variantId] = priceData;
+            }
+          }
+
+          savedSettings.variant_prices = mergedPrices;
+        }
+
+        const saved = JSON.stringify(savedSettings);
         if (saved.length > 200000)
           return json(
             { status: "error", message: "Configuración demasiado grande." },
@@ -1242,6 +1519,16 @@ export default {
         Object.assign(payload, { title, description });
 
         if (body.price !== undefined) {
+          if (payload.origin !== "manual") {
+            return json(
+              {
+                status: "error",
+                message: "Los productos de Printify conservan sus precios y variantes originales. Configure el precio comercial mediante variant_prices.",
+              },
+              400,
+            );
+          }
+
           const price = Number(body.price);
           if (!Number.isFinite(price) || price < 0)
             return json({ status: "error", message: "Precio no válido." }, 400);
